@@ -41,6 +41,7 @@
         html.parent-mode #teacherSidebar, 
         html.parent-mode .tab-content,
         html.parent-mode #viewModeBadge .teacher-label { display: none !important; }
+        .parent-mode #modeToggleBtn, .parent-mode #portalSwitchBtn, .parent-mode .switch-portal-btn { display: none !important; }
         #viewModeBadge .parent-label { display: none; }
         html.parent-mode #viewModeBadge .parent-label,
         html.parent-mode #parentPortalHeader,
@@ -75,7 +76,7 @@
             <!-- Logo & Brand Title -->
             <div class="flex items-center space-x-3 text-center sm:text-left">
                 <!-- Embedded Logo Placeholder/Asset with Fallback -->
-                <img id="headerLogo" src="/logo.png" alt="Ikhlas International Academy" class="h-11 rounded object-cover border border-blue-400/40"
+                <img id="headerLogo" src="logo.png" alt="Ikhlas International Academy" class="h-11 rounded object-cover border border-blue-400/40"
                      onerror="this.onerror=null; this.src='https://placehold.co/120x120/0A1F44/2A7FFF?text=IKHLAS';">
                 <div>
                     <h1 class="font-bold text-lg leading-tight tracking-wide text-white flex items-center gap-2">
@@ -94,7 +95,7 @@
                 </span>
                 
                 <!-- Live Toggle Button for Previewing Parent Portal vs Teacher Mode -->
-                <button onclick="togglePortalModePreview()" id="modeToggleBtn" class="bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 px-3 py-1.5 rounded-full font-medium transition flex items-center space-x-1">
+                <button onclick="togglePortalModePreview()" id="modeToggleBtn" class="switch-portal-btn bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 px-3 py-1.5 rounded-full font-medium transition flex items-center space-x-1">
                     <i class="fa-solid fa-arrows-rotate me-1 text-xs"></i>
                     <span id="viewModeBadge">
                         <span class="teacher-label">Switch to Parent Portal</span>
@@ -857,7 +858,7 @@
                 <!-- Printable Header -->
                 <div class="flex items-center justify-between border-b pb-3">
                     <div class="flex items-center space-x-2">
-                        <img src="/logo.png" style="height:36px;" onerror="this.style.display='none';">
+                        <img src="logo.png" style="height:36px;" onerror="this.style.display='none';">
                         <div>
                             <h2 class="font-bold text-base text-brandNavy">Ikhlas International Academy</h2>
                             <p class="text-[10px] text-gray-500">Official Fee Payment Receipt</p>
