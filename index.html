@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ikhlas International Academy - LMS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandNavy: '#0A1F44',
+                        brandBlue: '#2A7FFF',
+                        brandSilver: '#D9D9D9'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase SDKs (Compat version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; }
+        .sidebar-active { background-color: #2A7FFF; color: #ffffff; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+        html.parent-mode #teacherSidebar, 
+        html.parent-mode .tab-content,
+        html.parent-mode #viewModeBadge .teacher-label { display: none !important; }
+        #viewModeBadge .parent-label { display: none; }
+        html.parent-mode #viewModeBadge .parent-label,
+        html.parent-mode #parentPortalHeader,
+        html.parent-mode #parentViewContainer,
+        html.parent-mode #reportLoading:not([hidden]) { display: block !important; }
+        #reportLoading[hidden] { display: none !important; }
+        @media (max-width: 767px) {
+            html, body { min-height: 100%; overflow-y: auto; }
+            #appContainer, #appContainer main { min-width: 0; }
+            html:not(.parent-mode) #teacherSidebar { display: block; }
+            header .flex, #parentPortalHeader .flex { min-width: 0; max-width: 100%; }
+            header p, #parentPortalHeader, #parentViewContainer { overflow-wrap: anywhere; }
+            #parentViewContainer .grid { grid-template-columns: minmax(0, 1fr); }
+            #parentViewContainer .grid > * { min-width: 0; }
+            #parentPortalHeader > div:last-child { flex-wrap: wrap; }
+        }
+        .img-modal-overlay {
+            background-color: rgba(0,0,0,0.75);
+        }
+    </style>
+    <script>
+        if (new URLSearchParams(window.location.search).has('student') || new URLSearchParams(window.location.search).has('parent')) {
+            document.documentElement.classList.add('parent-mode');
+        }
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <!-- ==================== HEADER SECTION ==================== -->
+    <header class="bg-brandNavy text-white px-4 py-3 shadow-md border-b-2 border-brandBlue no-print">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Logo & Brand Title -->
+            <div class="flex items-center space-x-3 text-center sm:text-left">
+                <!-- Embedded Logo Placeholder/Asset with Fallback -->
+                <img id="headerLogo" src="/logo.png" alt="Ikhlas International Academy" class="h-11 rounded object-cover border border-blue-400/40"
+                     onerror="this.onerror=null; this.src='https://placehold.co/120x120/0A1F44/2A7FFF?text=IKHLAS';">
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide text-white flex items-center gap-2">
+                        <span>Ikhlas International Academy</span>
+                    </h1>
+                    <p class="text-xs text-brandSilver font-light">
+                        Learning Management System | <a href="https://ikhlasinternationalacademy.com" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">ikhlasinternationalacademy.com</a> | WhatsApp +92 317 0237447
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Connection & Mode Switcher Controls -->
+            <div class="flex items-center space-x-3 text-xs">
+                <span id="storageBadge" class="bg-blue-900/60 border border-blue-500/30 text-blue-200 px-3 py-1 rounded-full flex items-center">
+                    <i class="fa-solid fa-cloud me-1.5 text-brandBlue"></i> Sync: <span id="syncStatus" class="ml-1 font-semibold text-green-400">Ready</span>
+                </span>
+                
+                <!-- Live Toggle Button for Previewing Parent Portal vs Teacher Mode -->
+                <button onclick="togglePortalModePreview()" id="modeToggleBtn" class="bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 px-3 py-1.5 rounded-full font-medium transition flex items-center space-x-1">
+                    <i class="fa-solid fa-arrows-rotate me-1 text-xs"></i>
+                    <span id="viewModeBadge">
+                        <span class="teacher-label">Switch to Parent Portal</span>
+                        <span class="parent-label">Switch to Teacher Mode</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT LAYOUT ==================== -->
+    <div id="appContainer" class="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto p-3 sm:p-5 gap-5">
+        
+        <!-- TEACHER SIDEBAR NAVIGATION (Hidden in Parent Portal) -->
+        <aside id="teacherSidebar" class="w-full md:w-64 bg-white rounded-xl shadow-sm border border-gray-200 p-3 no-print hidden md:block shrink-0">
+            <div class="mb-4 px-3 py-2 bg-slate-50 rounded-lg text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Teacher Control Panel
+            </div>
+            <nav class="space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn sidebar-active w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-chart-line w-5"></i> <span>Dashboard</span>
+                </button>
+                <button onclick="switchTab('students')" id="nav-students" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-user-graduate w-5"></i> <span>Students Directory</span>
+                </button>
+                <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-calendar-check w-5"></i> <span>Attendance & Quran</span>
+                </button>
+                <button onclick="switchTab('academic')" id="nav-academic" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-book-open w-5"></i> <span>Academic Progress</span>
+                </button>
+                <button onclick="switchTab('fees')" id="nav-fees" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-file-invoice-dollar w-5"></i> <span>Fee Management</span>
+                </button>
+                <button onclick="switchTab('homework')" id="nav-homework" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-pen-ruler w-5"></i> <span>Homework & Worksheets</span>
+                </button>
+                <button onclick="switchTab('announcements')" id="nav-announcements" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-bullhorn w-5"></i> <span>Announcements</span>
+                </button>
+                <button onclick="switchTab('communication')" id="nav-communication" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-comments w-5"></i> <span>Parent Inquiries</span>
+                </button>
+                <button onclick="switchTab('classes')" id="nav-classes" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-video w-5"></i> <span>Classes & Timetable</span>
+                </button>
+                <button onclick="switchTab('reports')" id="nav-reports" class="nav-btn text-gray-700 hover:bg-slate-100 w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition">
+                    <i class="fa-solid fa-file-lines w-5"></i> <span>Reports & Badges</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- MAIN VIEW CONTENT CONTAINER -->
+        <main class="flex-1 min-w-0">
+            
+            <!-- PARENT PORTAL HEADER CARD (Visible when ?student= or ?parent= is active) -->
+            <div id="parentPortalHeader" class="hidden bg-white rounded-xl shadow-sm border border-brandBlue/30 p-4 mb-5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3">
+                        <div id="parentChildPhotoWrap" class="w-12 h-12 rounded-full bg-brandBlue text-white flex items-center justify-center font-bold text-xl overflow-hidden shrink-0 border-2 border-brandBlue">
+                            <i class="fa-solid fa-child font-bold"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-brandBlue uppercase font-bold tracking-wider">Parent Portal / والدین پورٹل</span>
+                            <h2 id="parentActiveChildName" class="text-xl font-bold text-brandNavy">Ayat Khan</h2>
+                            <p id="parentActiveChildClass" class="text-xs text-gray-500">Class: Hifz & Tajweed</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Child Switcher (Select active demo child for preview) -->
+                    <div id="childSelectorContainer" class="flex items-center space-x-2">
+                        <label class="text-xs font-semibold text-gray-600">Switch Child:</label>
+                        <select id="childDropdown" onchange="switchParentChild(this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg p-2 focus:ring-brandBlue focus:border-brandBlue">
+                            <!-- Populated Dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Parent Nav Tabs (FIX 2: Removed Lesson Images Tab) -->
+                <div class="flex overflow-x-auto gap-2 border-t border-gray-100 mt-4 pt-3 text-xs font-medium scrollbar-thin">
+                    <button onclick="switchParentTab('overview')" id="ptab-overview" class="px-3 py-1.5 rounded-md bg-brandBlue text-white whitespace-nowrap">Overview</button>
+                    <button onclick="switchParentTab('attendance')" id="ptab-attendance" class="px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 whitespace-nowrap">Attendance & Quran</button>
+                    <button onclick="switchParentTab('fees')" id="ptab-fees" class="px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 whitespace-nowrap">Fee Status</button>
+                </div>
+            </div>
+
+            <p id="reportLoading" role="status" aria-live="polite" class="hidden bg-white rounded-xl border border-gray-200 p-4 mb-5 text-sm text-gray-500">Loading report...</p>
+
+            <!-- TAB 1: DASHBOARD (Teacher View) -->
+            <div id="tab-dashboard" class="tab-content space-y-5">
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-500 font-medium uppercase">Total Students</p>
+                                <h3 id="dashTotalStudents" class="text-2xl font-bold text-brandNavy mt-1">3</h3>
+                            </div>
+                            <div class="p-3 bg-blue-50 text-brandBlue rounded-lg"><i class="fa-solid fa-users text-lg"></i></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-500 font-medium uppercase">Today's Attendance</p>
+                                <h3 id="dashTodayAttendance" class="text-2xl font-bold text-green-600 mt-1">3 / 3</h3>
+                            </div>
+                            <div class="p-3 bg-green-50 text-green-600 rounded-lg"><i class="fa-solid fa-user-check text-lg"></i></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-500 font-medium uppercase">Pending Fees</p>
+                                <h3 id="dashPendingFees" class="text-2xl font-bold text-red-600 mt-1">1</h3>
+                            </div>
+                            <div class="p-3 bg-red-50 text-red-600 rounded-lg"><i class="fa-solid fa-clock font-bold text-lg"></i></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-500 font-medium uppercase">Storage Used (Free Tier)</p>
+                                <h3 id="dashStorageUsage" class="text-xl font-bold text-brandNavy mt-1">1.2 MB / 5 GB</h3>
+                            </div>
+                            <div class="p-3 bg-purple-50 text-purple-600 rounded-lg"><i class="fa-solid fa-database text-lg"></i></div>
+                        </div>
+                        <div class="w-full bg-gray-200 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div id="storageBar" class="bg-brandBlue h-full" style="width: 3%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Notices & Quick Class Overview -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold text-gray-800">Recent Announcements</h4>
+                            <button onclick="switchTab('announcements')" class="text-xs text-brandBlue hover:underline">View All</button>
+                        </div>
+                        <div id="dashAnnouncementsList" class="space-y-3">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                        <h4 class="font-bold text-gray-800 mb-4">Attendance Quality Analytics</h4>
+                        <div class="h-48">
+                            <canvas id="dashAnalyticsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: STUDENTS DIRECTORY -->
+            <div id="tab-students" class="tab-content space-y-4 hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div>
+                        <h3 class="font-bold text-lg text-brandNavy">Student Directory</h3>
+                        <p class="text-xs text-gray-500">Manage enrolled students and auto-generate Parent Portal links.</p>
+                    </div>
+                    <button onclick="openModal('addStudentModal')" class="bg-brandBlue hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
+                        <i class="fa-solid fa-plus me-2"></i> Add New Student
+                    </button>
+                </div>
+
+                <!-- Students Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600">
+                        <thead class="bg-slate-50 border-b border-gray-200 text-xs uppercase font-semibold text-gray-500">
+                            <tr>
+                                <th class="p-3">Student Name</th>
+                                <th class="p-3">Father Name</th>
+                                <th class="p-3">Class</th>
+                                <th class="p-3">WhatsApp / Parent</th>
+                                <th class="p-3 text-center">Actions & Shareable Links</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody" class="divide-y divide-gray-100">
+                            <!-- Populated Dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: ATTENDANCE & QURAN LOG -->
+            <div id="tab-attendance" class="tab-content space-y-5 hidden">
+                <!-- Daily Attendance Recorder Card -->
+                <div class="bg-white p-4 sm:p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <h3 class="font-bold text-lg text-brandNavy">Daily Attendance & Quran Lesson Log</h3>
+                            <p class="text-xs text-gray-500">Mark attendance, lesson quality, and Quran Sabak / Sabqi / Manzil.</p>
+                        </div>
+                        <div class="flex items-center space-x-2 w-full sm:w-auto">
+                            <input type="date" id="attendanceDatePicker" class="border border-gray-300 rounded-lg p-2 text-sm bg-gray-50 focus:ring-brandBlue">
+                            <button onclick="loadAttendanceForDate()" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-sm">Load</button>
+                            <button onclick="saveDailyAttendance()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">Save All</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-600">
+                            <thead class="bg-slate-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="p-3 min-w-[140px]">Student</th>
+                                    <th class="p-3 min-w-[130px]">Status</th>
+                                    <th class="p-3 min-w-[120px]">Quality</th>
+                                    <th class="p-3 min-w-[180px]">Quran / Topic Progress</th>
+                                    <th class="p-3 min-w-[120px]">Time In / Out</th>
+                                    <th class="p-3 min-w-[160px]">Remarks / Photo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceMarkingBody" class="divide-y divide-gray-100">
+                                <!-- Populated Dynamically with FIX 2 item 4 (<input type="file" class="att-photo">) -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Monthly Attendance Report Generator -->
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h4 class="font-bold text-brandNavy text-base">Generate Monthly Attendance & Quran Progress Report</h4>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <select id="reportStudentSelect" class="border border-gray-300 rounded-lg p-2 text-sm flex-1">
+                            <!-- Populated Dynamically -->
+                        </select>
+                        <input type="month" id="reportMonthPicker" class="border border-gray-300 rounded-lg p-2 text-sm">
+                        <button onclick="generateMonthlyReport()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">View Report</button>
+                    </div>
+
+                    <div id="reportOutputArea" class="hidden border-t border-gray-100 pt-4 space-y-4">
+                        <!-- Stat Summary Header -->
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                            <div class="bg-green-50 p-2 rounded-lg text-green-700">
+                                <span class="block text-xs font-medium">Present</span>
+                                <span id="rptPresent" class="text-lg font-bold">0</span>
+                            </div>
+                            <div class="bg-red-50 p-2 rounded-lg text-red-700">
+                                <span class="block text-xs font-medium">Absent</span>
+                                <span id="rptAbsent" class="text-lg font-bold">0</span>
+                            </div>
+                            <div class="bg-yellow-50 p-2 rounded-lg text-yellow-700">
+                                <span class="block text-xs font-medium">Late</span>
+                                <span id="rptLate" class="text-lg font-bold">0</span>
+                            </div>
+                            <div class="bg-purple-50 p-2 rounded-lg text-purple-700">
+                                <span class="block text-xs font-medium">Leave</span>
+                                <span id="rptLeave" class="text-lg font-bold">0</span>
+                            </div>
+                            <div class="bg-blue-50 p-2 rounded-lg text-brandBlue col-span-2 sm:col-span-1">
+                                <span class="block text-xs font-medium">Percentage</span>
+                                <span id="rptPercentage" class="text-lg font-bold">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Day wise log (FIX 1 Item 1 + FIX 2 Item 6: Headers included Time & Photo) -->
+                        <div class="overflow-x-auto max-h-60 overflow-y-auto">
+                            <table class="w-full text-xs text-left text-gray-600 border border-gray-100">
+                                <thead class="bg-slate-100 uppercase sticky top-0">
+                                    <tr>
+                                        <th class="p-2">Date</th>
+                                        <th class="p-2">Status</th>
+                                        <th class="p-2">Lesson / Quran Progress</th>
+                                        <th class="p-2">Quality</th>
+                                        <th class="p-2">Time</th>
+                                        <th class="p-2">Photo</th>
+                                        <th class="p-2">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rptLogBody" class="divide-y divide-gray-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Courses & Curriculum Management Card -->
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <div>
+                        <h4 class="font-bold text-brandNavy text-base">Courses & Curriculum</h4>
+                        <p class="text-xs text-gray-500">Add, edit, or manage Quran & Islamic study courses synced across all devices.</p>
+                    </div>
+
+                    <!-- Add / Edit Course Form -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start bg-slate-50 p-3.5 rounded-lg border border-gray-200">
+                        <div class="md:col-span-4">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Course Title *</label>
+                            <input type="text" id="courseTitleInput" placeholder="e.g. Revision Quran" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-brandBlue focus:border-brandBlue">
+                        </div>
+                        <div class="md:col-span-5">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Description / Schedule</label>
+                            <input type="text" id="courseDescInput" placeholder="Course description or schedule details..." class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-brandBlue focus:border-brandBlue">
+                        </div>
+                        <div class="md:col-span-3 flex items-end space-x-2 md:pt-5">
+                            <button type="button" id="courseSubmitBtn" onclick="saveCourseForm()" class="flex-1 bg-brandBlue hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                                Add Course
+                            </button>
+                            <button type="button" id="courseCancelBtn" onclick="cancelEditCourse()" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Courses List -->
+                    <div id="coursesListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Populated Dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: ACADEMIC PROGRESS -->
+            <div id="tab-academic" class="tab-content space-y-4 hidden">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h3 class="font-bold text-lg text-brandNavy">Academic & Quran Assessment Entry</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Select Student</label>
+                            <select id="acadStudentSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                                <!-- Options -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Course Progress (%)</label>
+                            <input type="number" id="acadProgressPercent" min="0" max="100" placeholder="e.g. 75" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Recent Test Score / Result</label>
+                            <input type="text" id="acadTestScore" placeholder="e.g. 92/100 (Tajweed Quiz)" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Teacher Feedback & Remarks /  استاد کی رائے</label>
+                        <textarea id="acadFeedback" rows="3" placeholder="Write overall student progress, strengths, and recommendations..." class="w-full border border-gray-300 rounded-lg p-2 text-sm"></textarea>
+                    </div>
+                    <button onclick="saveAcademicProgress()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">Save Progress</button>
+                </div>
+            </div>
+
+            <!-- TAB 5: FEE MANAGEMENT -->
+            <div id="tab-fees" class="tab-content space-y-5 hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div>
+                        <h3 class="font-bold text-lg text-brandNavy">Fee Management & Billing</h3>
+                        <p class="text-xs text-gray-500">Record tuition fee vouchers, mark payment status, and issue PDF receipts.</p>
+                    </div>
+                    <button onclick="openModal('addFeeModal')" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">
+                        <i class="fa-solid fa-plus me-1"></i> Issue Fee Record
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600">
+                        <thead class="bg-slate-50 border-b border-gray-200 text-xs uppercase font-semibold text-gray-500">
+                            <tr>
+                                <th class="p-3">Student</th>
+                                <th class="p-3">Billing Month</th>
+                                <th class="p-3">Amount (PKR)</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Payment Method</th>
+                                <th class="p-3 text-center">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feeTableBody" class="divide-y divide-gray-100">
+                            <!-- Populated Dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 6: HOMEWORK & ASSIGNMENTS -->
+            <div id="tab-homework" class="tab-content space-y-5 hidden">
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-lg text-brandNavy">Homework & Worksheets Repository</h3>
+                    <button onclick="openModal('addHomeworkModal')" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">
+                        <i class="fa-solid fa-upload me-1"></i> Assign Homework
+                    </button>
+                </div>
+
+                <div id="homeworkCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB 7: ANNOUNCEMENTS -->
+            <div id="tab-announcements" class="tab-content space-y-5 hidden">
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-lg text-brandNavy">Noticeboard & Announcements</h3>
+                    <button onclick="openModal('addNoticeModal')" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">
+                        <i class="fa-solid fa-plus me-1"></i> Post Announcement
+                    </button>
+                </div>
+
+                <div id="announcementsListFull" class="space-y-3">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB 8: COMMUNICATION -->
+            <div id="tab-communication" class="tab-content space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h3 class="font-bold text-lg text-brandNavy">Parent Inquiries & Meeting Requests</h3>
+                    <p class="text-xs text-gray-500">Messages and requested appointments sent from the Parent Portal.</p>
+                    <div id="parentInquiriesList" class="space-y-3">
+                        <p class="text-sm text-gray-400">No recent inquiries or requests.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 9: CLASSES & TIMETABLE -->
+            <div id="tab-classes" class="tab-content space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-brandNavy">Live Class Links & Timetable</h3>
+                        <button onclick="openModal('addClassModal')" class="bg-brandBlue text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-600">+ Add Schedule</button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-600">
+                            <thead class="bg-slate-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="p-3">Day & Time</th>
+                                    <th class="p-3">Subject / Class</th>
+                                    <th class="p-3">Teacher</th>
+                                    <th class="p-3">Live Join Link (Teams / Meet)</th>
+                                    <th class="p-3">Recorded Video</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timetableBody" class="divide-y divide-gray-100">
+                                <!-- Dynamic -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 10: REPORTS & BADGES -->
+            <div id="tab-reports" class="tab-content space-y-5 hidden">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h3 class="font-bold text-lg text-brandNavy">Certificates & Student Badges</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border border-gray-200 rounded-lg p-4 space-y-3">
+                            <h4 class="font-semibold text-sm text-gray-700">Award Badge / Certificate</h4>
+                            <select id="certStudentSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm"></select>
+                            <input type="text" id="certTitle" placeholder="Badge Title e.g. Star Qaida Reciter" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                            <input type="text" id="certImageURL" placeholder="Certificate Image URL / Cloud Link" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                            <button onclick="saveStudentBadge()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium w-full">Issue Badge</button>
+                        </div>
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h4 class="font-semibold text-sm text-gray-700 mb-2">Issued Achievements List</h4>
+                            <div id="badgesList" class="space-y-2 max-h-48 overflow-y-auto text-xs text-gray-600">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== PARENT PORTAL VIEWS ==================== -->
+            <div id="parentViewContainer" class="hidden space-y-5">
+                <!-- Parent Overview Tab -->
+                <div id="ptab-overview-content" class="parent-tab-content space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Overall Attendance</p>
+                            <h3 id="parentStatAttendance" class="text-2xl font-bold text-green-600 mt-1">100%</h3>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Academic Progress</p>
+                            <h3 id="parentStatProgress" class="text-2xl font-bold text-brandBlue mt-1">85%</h3>
+                            <p id="parentStatTestScore" class="text-xs text-gray-500 mt-1">Test: 95/100</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Fee Status</p>
+                            <h3 id="parentStatFeeStatus" class="text-2xl font-bold text-green-600 mt-1">Paid</h3>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Quran Progress</p>
+                            <h3 id="parentStatQuran" class="text-lg font-bold text-brandNavy mt-1">Surah Al-Baqarah Verses 1-20</h3>
+                            <p id="parentStatQuranDate" class="text-xs text-gray-500 mt-1">Last updated today</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Behaviour</p>
+                            <h3 id="parentStatBehaviour" class="text-lg font-bold text-brandNavy mt-1">Excellent</h3>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Feedback Box -->
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+                        <h4 class="font-bold text-brandNavy text-sm mb-1 flex items-center">
+                            <i class="fa-solid fa-comment-dots text-brandBlue me-2"></i> Overall Remarks / استاد کا تاثر
+                        </h4>
+                        <p id="parentTeacherFeedback" class="text-xs text-gray-700 italic">Excellent progress in Tajweed rules. Consistently punctual in online classes.</p>
+                    </div>
+                </div>
+
+                <!-- Parent Attendance & Quran Tab (FIX 1 Item 3 + FIX 2 Item 6: Header contains Time and Photo) -->
+                <div id="ptab-attendance-content" class="parent-tab-content space-y-4 hidden">
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                        <h4 class="font-bold text-brandNavy">Detailed Attendance & Sabak Log</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 uppercase text-gray-500 font-semibold">
+                                    <tr>
+                                        <th class="p-2">Date</th>
+                                        <th class="p-2">Status</th>
+                                        <th class="p-2">Quran Lesson Progress</th>
+                                        <th class="p-2">Quality</th>
+                                        <th class="p-2">Time</th>
+                                        <th class="p-2">Photo</th>
+                                        <th class="p-2">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="parentAttendanceTable" class="divide-y divide-gray-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parent Fees Tab (view-only) -->
+                <div id="ptab-fees-content" class="parent-tab-content space-y-4 hidden">
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                        <h4 class="font-bold text-brandNavy">Fee Status</h4>
+                        <div id="parentFeeList" class="space-y-2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-brandNavy">Add New Student</h3>
+                <button onclick="closeModal('addStudentModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Student Full Name *</label>
+                    <input type="text" id="mStudentName" class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Father Name *</label>
+                    <input type="text" id="mFatherName" class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Class Category</label>
+                        <select id="mStudentClass" class="w-full border border-gray-300 rounded-lg p-2">
+                            <option>Hifz</option>
+                            <option>Nazra</option>
+                            <option>Qaida</option>
+                            <option>School</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Parent Contact / WA</label>
+                        <input type="text" id="mWhatsApp" placeholder="+92 3XX XXXXXXX" class="w-full border border-gray-300 rounded-lg p-2">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Parent Name</label>
+                    <input type="text" id="mParentName" class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-3">
+                <button onclick="closeModal('addStudentModal')" class="px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 text-xs">Cancel</button>
+                <button onclick="createNewStudent()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs">Create Student</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Detail: Today's Lesson Images Modal (FIX 2 item 7: Kept intact) -->
+    <div id="lessonImagesModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-2xl w-full p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div>
+                    <h3 class="font-bold text-brandNavy" id="liStudentName">Student</h3>
+                    <p class="text-[10px] text-gray-400" id="liStudentInfo"></p>
+                </div>
+                <button onclick="closeModal('lessonImagesModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-2 text-sm">
+                <label class="block text-xs font-semibold text-gray-600">Today's Lesson Images (screenshots of what was taught today)</label>
+                <input type="file" id="liFileInput" accept="image/*" multiple class="w-full border border-gray-300 rounded-lg p-2 text-xs">
+                <div class="flex items-center justify-between">
+                    <span id="liUploadStatus" class="text-xs text-gray-500"></span>
+                    <button id="liUploadBtn" onclick="uploadLessonImages()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs disabled:opacity-50">
+                        <i class="fa-solid fa-upload me-1"></i> Upload for Today
+                    </button>
+                </div>
+            </div>
+            <div id="liImagesList" class="space-y-4 border-t pt-3"></div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox Modal for Photo Thumbnails -->
+    <div id="photoLightboxModal" class="fixed inset-0 img-modal-overlay z-50 flex items-center justify-center p-4 hidden" onclick="closeModal('photoLightboxModal')">
+        <div class="relative bg-white p-2 rounded-xl max-w-xl w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+            <button onclick="closeModal('photoLightboxModal')" class="absolute top-3 right-3 bg-gray-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow"><i class="fa-solid fa-xmark"></i></button>
+            <img id="lightboxImg" src="" alt="Attendance Photo" class="w-full max-h-[80vh] object-contain rounded-lg">
+        </div>
+    </div>
+
+    <!-- Add Fee Modal -->
+    <div id="addFeeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-brandNavy">Record Fee Invoice</h3>
+                <button onclick="closeModal('addFeeModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Student</label>
+                    <select id="mFeeStudent" class="w-full border border-gray-300 rounded-lg p-2"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Month</label>
+                        <input type="month" id="mFeeMonth" class="w-full border border-gray-300 rounded-lg p-2">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Amount (PKR)</label>
+                        <input type="number" id="mFeeAmount" placeholder="3000" class="w-full border border-gray-300 rounded-lg p-2">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+                        <select id="mFeeStatus" class="w-full border border-gray-300 rounded-lg p-2">
+                            <option value="Paid">Paid</option>
+                            <option value="Unpaid">Unpaid</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Payment Method</label>
+                        <select id="mFeeMethod" class="w-full border border-gray-300 rounded-lg p-2">
+                            <option>JazzCash</option>
+                            <option>EasyPaisa</option>
+                            <option>Bank Transfer</option>
+                            <option>Cash</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-3">
+                <button onclick="saveFeeRecord()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs">Save Voucher</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Homework Modal -->
+    <div id="addHomeworkModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-brandNavy">Assign Homework</h3>
+                <button onclick="closeModal('addHomeworkModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Homework Title</label>
+                    <input type="text" id="mHwTitle" placeholder="e.g. Surah Al-Mulk Revision & Tajweed Worksheet" class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Due Date</label>
+                    <input type="date" id="mHwDueDate" class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Worksheet / PDF Link</label>
+                    <input type="text" id="mHwLink" placeholder="https://..." class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-3">
+                <button onclick="saveHomework()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs">Post Homework</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Notice Modal -->
+    <div id="addNoticeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-brandNavy">Post New Announcement</h3>
+                <button onclick="closeModal('addNoticeModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Title</label>
+                    <input type="text" id="mNoticeTitle" class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Category</label>
+                    <select id="mNoticeType" class="w-full border border-gray-300 rounded-lg p-2">
+                        <option>General</option>
+                        <option>Holiday Notice</option>
+                        <option>Class Schedule Change</option>
+                        <option>Event</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Message Detail</label>
+                    <textarea id="mNoticeMsg" rows="3" class="w-full border border-gray-300 rounded-lg p-2"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-3">
+                <button onclick="saveAnnouncement()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs">Publish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Schedule Modal -->
+    <div id="addClassModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-brandNavy">Add Class Slot</h3>
+                <button onclick="closeModal('addClassModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Day</label>
+                        <select id="mClassDay" class="w-full border border-gray-300 rounded-lg p-2">
+                            <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+                            <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Time</label>
+                        <input type="text" id="mClassTime" placeholder="e.g. 5:00 PM - 6:00 PM" class="w-full border border-gray-300 rounded-lg p-2">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Subject / Quran Level</label>
+                    <input type="text" id="mClassSubject" placeholder="e.g. Tajweed & Hifz" class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Live Link (Teams / Google Meet)</label>
+                    <input type="text" id="mClassLink" placeholder="https://meet.google.com/..." class="w-full border border-gray-300 rounded-lg p-2">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-3">
+                <button onclick="saveClassSchedule()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs">Save Slot</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Receipt Modal -->
+    <div id="receiptModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div id="printableReceiptArea" class="space-y-4 border p-4 rounded-lg">
+                <!-- Printable Header -->
+                <div class="flex items-center justify-between border-b pb-3">
+                    <div class="flex items-center space-x-2">
+                        <img src="/logo.png" style="height:36px;" onerror="this.style.display='none';">
+                        <div>
+                            <h2 class="font-bold text-base text-brandNavy">Ikhlas International Academy</h2>
+                            <p class="text-[10px] text-gray-500">Official Fee Payment Receipt</p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-green-100 text-green-700 font-bold px-2.5 py-1 rounded">PAID</span>
+                </div>
+                <div class="text-xs space-y-1.5 text-gray-700">
+                    <div class="flex justify-between"><span class="font-semibold">Receipt No:</span> <span id="rNum">#INV-1001</span></div>
+                    <div class="flex justify-between"><span class="font-semibold">Student Name:</span> <span id="rName">-</span></div>
+                    <div class="flex justify-between"><span class="font-semibold">Billing Period:</span> <span id="rMonth">-</span></div>
+                    <div class="flex justify-between"><span class="font-semibold">Payment Method:</span> <span id="rMethod">-</span></div>
+                    <div class="flex justify-between border-t pt-2 text-sm font-bold text-brandNavy">
+                        <span>Total Paid Amount:</span> <span id="rAmount">PKR 0</span>
+                    </div>
+                </div>
+                <div class="border-t pt-2 text-center text-[10px] text-gray-400">
+                    Thank you for choosing Ikhlas International Academy. | ikhlasinternationalacademy.com
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button onclick="closeModal('receiptModal')" class="px-4 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 text-xs">Close</button>
+                <button onclick="window.print()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs flex items-center">
+                    <i class="fa-solid fa-print me-1.5"></i> Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ==================== JAVASCRIPT LOGIC ENGINE ==================== -->
+    <script>
+        /* 
+         * ======================================================================================
+         * 1. FIREBASE CONFIGURATION & FALLBACK
+         * ======================================================================================
+         */
+        const firebaseConfig = {
+            apiKey: "AIzaSyDa6-aaCg_RrPQpynd91863puI58Ri3vWE",
+            authDomain: "ikhlas-academy-409a0.firebaseapp.com",
+            projectId: "ikhlas-academy-409a0",
+            storageBucket: "ikhlas-academy-409a0.firebasestorage.app",
+            messagingSenderId: "870876472249",
+            appId: "1:870876472249:web:05083655340d8f6dcf8c68",
+            measurementId: "G-4MCCXGZYEE"
+        };
+
+        let db = null;
+        let storage = null;
+        let isFirebaseAvailable = false;
+
+        try {
+            if (firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                storage = firebase.storage();
+                isFirebaseAvailable = true;
+                const statusEl = document.getElementById('syncStatus');
+                if(statusEl) {
+                    statusEl.innerText = "Ready";
+                    statusEl.className = "ml-1 font-semibold text-green-400";
+                }
+            }
+        } catch (e) {
+            console.warn("Firebase fallback mode.", e);
+        }
+
+        /* 
+         * ======================================================================================
+         * 2. DEMO INITIAL SEED & STORE DATA
+         * ======================================================================================
+         */
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        const DEFAULT_STUDENTS = [
+            { id: "AYAT-101", parentId: "P-10", name: "Ayat Khan", fatherName: "Tariq Khan", class: "Hifz", whatsapp: "+92 317 0237447", parentName: "Tariq Khan" },
+            { id: "ZAYN-102", parentId: "P-11", name: "Zayn Malik", fatherName: "Bilal Malik", class: "Nazra", whatsapp: "+92 300 1234567", parentName: "Bilal Malik" },
+            { id: "HAMZA-103", parentId: "P-12", name: "Hamza Ahmed", fatherName: "Zubair Ahmed", class: "Qaida", whatsapp: "+92 321 9876543", parentName: "Zubair Ahmed" }
+        ];
+
+        const DEFAULT_ATTENDANCE = [
+            { date: todayStr, studentId: "AYAT-101", status: "Present", quality: "Excellent", lesson: "Surah Al-Baqarah 1-20", timeIn: "4:00 PM", timeOut: "5:00 PM", remarks: "MashaAllah perfect recitation", photo: "https://placehold.co/300x300/0A1F44/FFFFFF?text=Quran+Lesson" },
+            { date: todayStr, studentId: "ZAYN-102", status: "Present", quality: "Good", lesson: "Para 5 Revision", timeIn: "5:00 PM", timeOut: "6:00 PM", remarks: "Revise Tajweed rules", photo: "" },
+            { date: todayStr, studentId: "HAMZA-103", status: "Late", quality: "Good", lesson: "Norani Qaida Page 12", timeIn: "6:15 PM", timeOut: "7:00 PM", remarks: "Arrived 15 mins late", photo: "" }
+        ];
+
+        const DEFAULT_DATA = {
+            students: DEFAULT_STUDENTS,
+            attendance: DEFAULT_ATTENDANCE,
+            academics: {
+                "AYAT-101": { progress: 85, testScore: "95/100", feedback: "Excellent progress in Tajweed rules." },
+                "ZAYN-102": { progress: 70, testScore: "82/100", feedback: "Needs a bit more practice on Makharij." },
+                "HAMZA-103": { progress: 60, testScore: "75/100", feedback: "Good effort in Qaida lesson." }
+            },
+            fees: [
+                { id: "F-1001", studentId: "AYAT-101", month: todayStr.substring(0, 7), amount: 3500, status: "Paid", method: "JazzCash" },
+                { id: "F-1002", studentId: "ZAYN-102", month: todayStr.substring(0, 7), amount: 3000, status: "Paid", method: "EasyPaisa" },
+                { id: "F-1003", studentId: "HAMZA-103", month: todayStr.substring(0, 7), amount: 3000, status: "Unpaid", method: "Bank Transfer" }
+            ],
+            homework: [
+                { id: "HW-1", title: "Surah Al-Mulk Revision", dueDate: todayStr, link: "https://ikhlasinternationalacademy.com" }
+            ],
+            announcements: [
+                { id: "A-1", title: "Monthly Tajweed Evaluation", type: "Event", msg: "Oral test next Monday for all Hifz & Nazra students.", date: todayStr }
+            ],
+            timetable: [
+                { day: "Monday", time: "04:00 PM - 05:00 PM", subject: "Hifz & Tajweed", link: "https://meet.google.com", video: "" },
+                { day: "Tuesday", time: "05:00 PM - 06:00 PM", subject: "Nazra Quran", link: "https://meet.google.com", video: "" }
+            ],
+            inquiries: [],
+            badges: [
+                { studentId: "AYAT-101", title: "Star Hifz Reciter", url: "", date: todayStr }
+            ],
+            courses: []
+        };
+
+        const DEFAULT_COURSES = [
+            {
+                id: "default-course-1",
+                title: "Revision Quran",
+                description: "Class schedule 13 mints --- Lesson / 5 mints -- previous -- Lesson / Book + Namaz /",
+                order: 1
+            },
+            {
+                id: "default-course-2",
+                title: "Hifz Course",
+                description: "Quran Para 30 se parh rahe hain",
+                order: 2
+            },
+            {
+                id: "default-course-3",
+                title: "Basic Course",
+                description: "",
+                order: 3
+            },
+            {
+                id: "default-course-4",
+                title: "Nazrah Course",
+                description: "",
+                order: 4
+            }
+        ];
+
+        function getStoreData(key) {
+            try {
+                const raw = localStorage.getItem('ikhlas_' + key);
+                return raw ? JSON.parse(raw) : (DEFAULT_DATA[key] || []);
+            } catch (err) {
+                return DEFAULT_DATA[key] || [];
+            }
+        }
+
+        function setStoreData(key, value) {
+            try {
+                localStorage.setItem('ikhlas_' + key, JSON.stringify(value));
+            } catch (err) { }
+        }
+
+        let appStudents = getStoreData('students');
+        if (appStudents.length === 0) appStudents = DEFAULT_STUDENTS;
+        let appAttendance = getStoreData('attendance');
+        if (appAttendance.length === 0) appAttendance = DEFAULT_ATTENDANCE;
+        let appAcademics = getStoreData('academics');
+        let appFees = getStoreData('fees');
+        let appHomework = getStoreData('homework');
+        let appAnnouncements = getStoreData('announcements');
+        let appTimetable = getStoreData('timetable');
+        let appInquiries = getStoreData('inquiries');
+        let appBadges = getStoreData('badges');
+        let appCourses = getStoreData('courses');
+        let appLessonImages = getStoreData('lessonImages');
+        let editingCourseId = null;
+
+        /* 
+         * ======================================================================================
+         * 3. INITIALIZATION & ROUTING
+         * ======================================================================================
+         */
+        let currentParentViewStudentId = "AYAT-101";
+
+        function initializeView() {
+            const dateInput = document.getElementById('attendanceDatePicker');
+            if(dateInput) dateInput.value = todayStr;
+
+            const monthInput = document.getElementById('reportMonthPicker');
+            if(monthInput) monthInput.value = todayStr.substring(0, 7);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const studentParam = urlParams.get('student');
+            const isParentMode = urlParams.has('student') || urlParams.has('parent');
+
+            if (isParentMode) {
+                document.documentElement.classList.add('parent-mode');
+                loadParentPortalData(studentParam || appStudents[0]?.id || "AYAT-101");
+                syncParentCloudData(studentParam || appStudents[0]?.id || "AYAT-101");
+            } else {
+                renderStudentsTable();
+                renderDashboard();
+                populateDropdowns();
+                loadAttendanceForDate();
+                loadStudentsAndAttendanceFromFirestore();
+                loadCoursesFromFirestore();
+            }
+
+            renderAnalyticsChart();
+        }
+
+        async function loadStudentsAndAttendanceFromFirestore() {
+            if (!(isFirebaseAvailable && db)) return;
+            try {
+                const [stSnap, attSnap, feeSnap, hwSnap, acadSnap] = await Promise.all([
+                    db.collection('students').get(),
+                    db.collection('attendance').get(),
+                    db.collection('fees').get(),
+                    db.collection('homework').get(),
+                    db.collection('academics').get()
+                ]);
+
+                if (!stSnap.empty) {
+                    appStudents = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+                    setStoreData('students', appStudents);
+                } else if (appStudents.length > 0) {
+                    const batch = db.batch();
+                    appStudents.forEach(st => {
+                        batch.set(db.collection('students').doc(st.id), st, { merge: true });
+                    });
+                    await batch.commit();
+                }
+
+                if (!attSnap.empty) {
+                    appAttendance = attSnap.docs.map(d => d.data());
+                    setStoreData('attendance', appAttendance);
+                } else if (appAttendance.length > 0) {
+                    const batch = db.batch();
+                    appAttendance.forEach(rec => {
+                        const docId = `${rec.date}_${rec.studentId}`;
+                        batch.set(db.collection('attendance').doc(docId), rec, { merge: true });
+                    });
+                    await batch.commit();
+                }
+
+                if (!feeSnap.empty) {
+                    appFees = feeSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+                    setStoreData('fees', appFees);
+                } else if (appFees.length > 0) {
+                    const batch = db.batch();
+                    appFees.forEach(fee => {
+                        batch.set(db.collection('fees').doc(fee.id), fee, { merge: true });
+                    });
+                    await batch.commit();
+                }
+
+                if (!hwSnap.empty) {
+                    appHomework = hwSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+                    setStoreData('homework', appHomework);
+                } else if (appHomework.length > 0) {
+                    const batch = db.batch();
+                    appHomework.forEach(hw => {
+                        batch.set(db.collection('homework').doc(hw.id), hw, { merge: true });
+                    });
+                    await batch.commit();
+                }
+
+                if (!acadSnap.empty) {
+                    const cloudAcad = {};
+                    acadSnap.docs.forEach(d => {
+                        cloudAcad[d.id] = d.data();
+                    });
+                    appAcademics = cloudAcad;
+                    setStoreData('academics', appAcademics);
+                } else if (appAcademics && Object.keys(appAcademics).length > 0) {
+                    const batch = db.batch();
+                    Object.entries(appAcademics).forEach(([stId, data]) => {
+                        batch.set(db.collection('academics').doc(stId), data, { merge: true });
+                    });
+                    await batch.commit();
+                }
+
+                renderStudentsTable();
+                populateDropdowns();
+                loadAttendanceForDate();
+                renderFeeTable();
+                renderHomeworkCards();
+                renderDashboard();
+            } catch (err) {
+                console.warn("Could not sync students/attendance/fees/homework/academics from Firestore, using local backup:", err);
+            }
+        }
+
+        /* 
+         * ======================================================================================
+         * 4. TEACHER UI SWITCHING
+         * ======================================================================================
+         */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('sidebar-active');
+                btn.classList.add('text-gray-700', 'hover:bg-slate-100');
+            });
+
+            document.getElementById('tab-' + tabId)?.classList.remove('hidden');
+            const activeBtn = document.getElementById('nav-' + tabId);
+            if(activeBtn) {
+                activeBtn.classList.add('sidebar-active');
+                activeBtn.classList.remove('text-gray-700', 'hover:bg-slate-100');
+            }
+
+            if(tabId === 'dashboard') renderDashboard();
+            if(tabId === 'students') renderStudentsTable();
+            if(tabId === 'attendance') {
+                loadAttendanceForDate();
+                loadCoursesFromFirestore();
+            }
+            if(tabId === 'fees') renderFeeTable();
+            if(tabId === 'homework') renderHomeworkCards();
+            if(tabId === 'announcements') renderAnnouncementsList();
+            if(tabId === 'classes') renderTimetable();
+            if(tabId === 'reports') renderBadgesList();
+        }
+
+        function togglePortalModePreview() {
+            const isParent = document.documentElement.classList.toggle('parent-mode');
+            if (isParent) {
+                const targetId = appStudents[0]?.id || "AYAT-101";
+                loadParentPortalData(targetId);
+                syncParentCloudData(targetId);
+            } else {
+                switchTab('dashboard');
+            }
+        }
+
+        /* 
+         * ======================================================================================
+         * 5. STUDENT DIRECTORY & LESSON IMAGES
+         * ======================================================================================
+         */
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function renderStudentsTable() {
+            const tbody = document.getElementById('studentsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            appStudents.forEach(st => {
+                const parentLink = `${window.location.origin}${window.location.pathname}?student=${encodeURIComponent(st.id)}`;
+                const waText = encodeURIComponent(`Assalam-o-Alaikum, Ye ${st.name} ka Parent Portal link hai. Is me attendance, lesson, fees aur report dekh sakte hain. Link: ${parentLink} - Ikhlas International Academy`);
+                const waUrl = `https://wa.me/${st.whatsapp.replace(/[^0-9]/g, '')}?text=${waText}`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-medium text-brandNavy">${escapeHtml(st.name)} <br/><span class="text-[10px] text-gray-400">ID: ${escapeHtml(st.id)}</span></td>
+                    <td class="p-3">${escapeHtml(st.fatherName)}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-brandBlue">${escapeHtml(st.class)}</span></td>
+                    <td class="p-3">${escapeHtml(st.parentName)} <br/><span class="text-xs text-gray-500">${escapeHtml(st.whatsapp)}</span></td>
+                    <td class="p-3 text-center space-x-1 whitespace-nowrap">
+                        <button onclick="copyToClipboard('${parentLink}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">
+                            <i class="fa-solid fa-copy me-1"></i> Copy Link
+                        </button>
+                        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
+                            <i class="fa-brands fa-whatsapp me-1"></i> Share WhatsApp
+                        </a>
+                        <button onclick="openLessonImages('${st.id}')" class="bg-brandBlue hover:bg-blue-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
+                            <i class="fa-solid fa-images me-1"></i> Lesson Images
+                        </button>
+                        <button onclick="deleteStudent('${st.id}')" class="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
+                            <i class="fa-solid fa-trash me-1"></i> Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function createNewStudent() {
+            const name = document.getElementById('mStudentName').value.trim();
+            const fatherName = document.getElementById('mFatherName').value.trim();
+            const cls = document.getElementById('mStudentClass').value;
+            const wa = document.getElementById('mWhatsApp').value.trim();
+            const parentName = document.getElementById('mParentName').value.trim();
+
+            if (!name || !fatherName) {
+                alert("Please fill in Student and Father name.");
+                return;
+            }
+
+            const newId = name.toUpperCase().replace(/\s+/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+            const newStudent = { id: newId, parentId: 'P-' + Math.floor(10 + Math.random() * 90), name, fatherName, class: cls, whatsapp: wa || "+92 300 0000000", parentName: parentName || fatherName };
+            appStudents.push(newStudent);
+            setStoreData('students', appStudents);
+
+            if (isFirebaseAvailable && db) {
+                db.collection('students').doc(newId).set(newStudent).catch(err => console.error("Error saving student to Firestore:", err));
+            }
+
+            closeModal('addStudentModal');
+            renderStudentsTable();
+            populateDropdowns();
+            renderDashboard();
+        }
+
+        function deleteStudent(studentId) {
+            if (confirm("Are you sure? This student will be deleted permanently.")) {
+                if (isFirebaseAvailable && db) {
+                    db.collection('students').doc(studentId).delete().catch(err => console.error("Error deleting student from Firestore:", err));
+                }
+                appStudents = appStudents.filter(s => s.id !== studentId);
+                setStoreData('students', appStudents);
+                renderStudentsTable();
+                populateDropdowns();
+                renderDashboard();
+            }
+        }
+
+        /* FIX 2: Real Cloudinary Upload + Lesson Images Management */
+        const CLOUDINARY_CLOUD_NAME = "sietck7o";
+        const CLOUDINARY_UPLOAD_PRESET = "lms_lessons";
+        const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+        function localDateStr() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        function compressImageToJpg(file, maxWidth = 1000, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const objUrl = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const scale = img.naturalWidth > maxWidth ? maxWidth / img.naturalWidth : 1;
+                    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+                    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+                    URL.revokeObjectURL(objUrl);
+                    canvas.toBlob(
+                        blob => blob ? resolve(blob) : reject(new Error("Image compression failed")),
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(objUrl);
+                    reject(new Error("Could not read image"));
+                };
+                img.src = objUrl;
+            });
+        }
+
+        async function uploadToCloudinary(blob) {
+            const formData = new FormData();
+            formData.append('file', blob);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+            const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok || !data.secure_url) {
+                throw new Error((data.error && data.error.message) || "Cloudinary upload failed");
+            }
+            return data.secure_url;
+        }
+
+        let lessonImagesStudentId = null;
+
+        async function openLessonImages(studentId) {
+            const st = appStudents.find(s => s.id === studentId);
+            if (!st) return;
+            lessonImagesStudentId = studentId;
+            document.getElementById('liStudentName').innerText = st.name;
+            document.getElementById('liStudentInfo').innerText = `ID: ${st.id} | Class: ${st.class}`;
+            document.getElementById('liFileInput').value = '';
+            document.getElementById('liUploadStatus').innerText = '';
+            openModal('lessonImagesModal');
+            await renderLessonImages();
+        }
+
+        async function renderLessonImages() {
+            const container = document.getElementById('liImagesList');
+            const studentId = lessonImagesStudentId;
+            if (!container || !studentId) return;
+
+            const today = localDateStr();
+            container.innerHTML = '<p class="text-xs text-gray-400">Loading today\'s lesson images...</p>';
+
+            if (isFirebaseAvailable && db) {
+                try {
+                    const snap = await db.collection('lessonImages').where('studentId', '==', studentId).get();
+                    if (studentId !== lessonImagesStudentId) return;
+                    const cloudImgs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+                    const otherStudentsImgs = appLessonImages.filter(img => img.studentId !== studentId);
+                    appLessonImages = [...otherStudentsImgs, ...cloudImgs];
+                    setStoreData('lessonImages', appLessonImages);
+                } catch (err) {
+                    console.warn("Could not load lesson images from Firestore, using local backup:", err);
+                }
+            }
+
+            const todaysImgs = appLessonImages
+                .filter(img => img.studentId === studentId && img.date === today)
+                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            if (todaysImgs.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-400">No lesson images uploaded for today (${escapeHtml(today)}).</p>`;
+                return;
+            }
+
+            container.innerHTML = `<h4 class="text-xs font-bold text-brandNavy border-b pb-1"><i class="fa-solid fa-calendar-day me-1"></i> Today (${escapeHtml(today)})</h4>`;
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-2 sm:grid-cols-3 gap-2";
+
+            todaysImgs.forEach(img => {
+                const imgUrl = img.imageUrl || img.secure_url || '';
+                const card = document.createElement('div');
+                card.className = "border rounded-lg overflow-hidden bg-slate-50 flex flex-col";
+                card.innerHTML = `
+                    <a href="${escapeHtml(imgUrl)}" target="_blank" rel="noopener noreferrer">
+                        <img src="${escapeHtml(imgUrl)}" alt="Lesson image" class="w-full h-28 object-cover">
+                    </a>
+                    <div class="px-2 py-1 text-[10px] text-gray-500 flex justify-between items-center bg-white border-t">
+                        <span>${escapeHtml(img.date)}</span>
+                        <button type="button" onclick="deleteLessonImage('${escapeHtml(img.id)}')" class="text-red-600 hover:underline font-semibold">
+                            <i class="fa-solid fa-trash me-0.5"></i> Delete
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            container.appendChild(grid);
+        }
+
+        async function uploadLessonImages() {
+            const studentId = lessonImagesStudentId;
+            const fileInput = document.getElementById('liFileInput');
+            const files = Array.from(fileInput.files || []);
+            const status = document.getElementById('liUploadStatus');
+            const btn = document.getElementById('liUploadBtn');
+
+            if (!studentId) return;
+            if (files.length === 0) {
+                alert("Please select one or more images.");
+                return;
+            }
+
+            const date = localDateStr();
+            btn.disabled = true;
+            let done = 0;
+            let failed = 0;
+
+            for (const file of files) {
+                if (!file.type.startsWith('image/')) {
+                    failed++;
+                    continue;
+                }
+                const label = `Image ${done + failed + 1} of ${files.length}`;
+                try {
+                    status.innerText = `${label}: compressing...`;
+                    const blob = await compressImageToJpg(file, 1000, 0.7);
+                    status.innerText = `${label}: uploading to Cloudinary...`;
+                    const secure_url = await uploadToCloudinary(blob);
+
+                    const docId = 'li-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+                    const record = {
+                        id: docId,
+                        studentId,
+                        date,
+                        imageUrl: secure_url,
+                        createdAt: Date.now()
+                    };
+
+                    if (isFirebaseAvailable && db) {
+                        await db.collection('lessonImages').doc(docId).set(record);
+                    }
+
+                    appLessonImages.push(record);
+                    setStoreData('lessonImages', appLessonImages);
+                    done++;
+                } catch (err) {
+                    console.error("Error uploading lesson image:", err);
+                    failed++;
+                }
+            }
+
+            btn.disabled = false;
+            fileInput.value = '';
+            status.innerText = `${done} image(s) uploaded` + (failed ? `, ${failed} failed.` : '.');
+            if (studentId === lessonImagesStudentId) {
+                await renderLessonImages();
+            }
+        }
+
+        async function deleteLessonImage(docId) {
+            if (!confirm("Delete this lesson image?")) return;
+            try {
+                if (isFirebaseAvailable && db) {
+                    await db.collection('lessonImages').doc(docId).delete();
+                }
+            } catch (err) {
+                console.error("Error deleting lesson image from Firestore:", err);
+            }
+            appLessonImages = appLessonImages.filter(img => img.id !== docId);
+            setStoreData('lessonImages', appLessonImages);
+            await renderLessonImages();
+        }
+
+        /* 
+         * ======================================================================================
+         * 6. DAILY ATTENDANCE & REPORT LOG (FIX 1 & FIX 2 IMPLEMENTATION)
+         * ======================================================================================
+         */
+        
+        /* FIX 2 ITEM 4: In Teacher Panel attendance table, add photo input & show existing photo */
+        function loadAttendanceForDate() {
+            const selectedDate = document.getElementById('attendanceDatePicker').value;
+            const tbody = document.getElementById('attendanceMarkingBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            appStudents.forEach(st => {
+                const existingLog = appAttendance.find(a => a.date === selectedDate && a.studentId === st.id) || {};
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-gray-800" data-studentid="${st.id}">${escapeHtml(st.name)}</td>
+                    <td class="p-3">
+                        <select class="att-status border rounded p-1 text-xs w-full">
+                            <option ${existingLog.status === 'Present' ? 'selected' : ''}>Present</option>
+                            <option ${existingLog.status === 'Absent' ? 'selected' : ''}>Absent</option>
+                            <option ${existingLog.status === 'Late' ? 'selected' : ''}>Late</option>
+                            <option ${existingLog.status === 'Leave' ? 'selected' : ''}>Leave</option>
+                            <option ${existingLog.status === 'Holiday' ? 'selected' : ''}>Holiday</option>
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <select class="att-quality border rounded p-1 text-xs w-full">
+                            <option ${existingLog.quality === 'Excellent' ? 'selected' : ''}>Excellent</option>
+                            <option ${existingLog.quality === 'Good' ? 'selected' : ''}>Good</option>
+                            <option ${existingLog.quality === 'Weak' ? 'selected' : ''}>Weak</option>
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <input type="text" class="att-lesson border rounded p-1 text-xs w-full" placeholder="Surah / Sabak / Manzil" value="${escapeHtml(existingLog.lesson || '')}">
+                    </td>
+                    <td class="p-3 space-y-1">
+                        <input type="text" class="att-in border rounded p-1 text-[10px] w-full" placeholder="In (e.g 4PM)" value="${escapeHtml(existingLog.timeIn || '')}">
+                        <input type="text" class="att-out border rounded p-1 text-[10px] w-full" placeholder="Out (e.g 5PM)" value="${escapeHtml(existingLog.timeOut || '')}">
+                    </td>
+                    <td class="p-3 space-y-1">
+                        <input type="text" class="att-remarks border rounded p-1 text-xs w-full" placeholder="Remarks..." value="${escapeHtml(existingLog.remarks || '')}">
+                        <input type="file" class="att-photo text-[10px] w-full" accept="image/*">
+                        ${existingLog.photo ? `<img src="${escapeHtml(existingLog.photo)}" alt="Saved Photo" class="w-10 h-10 object-cover rounded border cursor-pointer" onclick="openPhotoLightbox('${escapeHtml(existingLog.photo)}')">` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* FIX 2 ITEM 5: ASYNC saveDailyAttendance with Cloudinary upload + Firestore sync */
+        async function saveDailyAttendance() {
+            const date = document.getElementById('attendanceDatePicker').value;
+            const rows = document.querySelectorAll('#attendanceMarkingBody tr');
+
+            for (const row of rows) {
+                const stId = row.querySelector('[data-studentid]').getAttribute('data-studentid');
+                const status = row.querySelector('.att-status').value;
+                const quality = row.querySelector('.att-quality').value;
+                const lesson = row.querySelector('.att-lesson').value;
+                const timeIn = row.querySelector('.att-in').value;
+                const timeOut = row.querySelector('.att-out').value;
+                const remarks = row.querySelector('.att-remarks').value;
+                const photoInput = row.querySelector('.att-photo');
+
+                const existingLog = appAttendance.find(a => a.date === date && a.studentId === stId) || {};
+                let photo = existingLog.photo || '';
+
+                if (photoInput && photoInput.files && photoInput.files[0]) {
+                    try {
+                        const file = photoInput.files[0];
+                        const blob = await compressImageToJpg(file, 1000, 0.7);
+                        photo = await uploadToCloudinary(blob);
+                    } catch (err) {
+                        console.error("Photo upload error:", err);
+                    }
+                }
+
+                appAttendance = appAttendance.filter(a => !(a.date === date && a.studentId === stId));
+                const newRec = { date, studentId: stId, status, quality, lesson, timeIn, timeOut, remarks, photo };
+                appAttendance.push(newRec);
+
+                if (isFirebaseAvailable && db) {
+                    try {
+                        const docId = `${date}_${stId}`;
+                        await db.collection('attendance').doc(docId).set(newRec, { merge: true });
+                    } catch (err) {
+                        console.error("Error saving attendance to Firestore:", err);
+                    }
+                }
+            }
+
+            setStoreData('attendance', appAttendance);
+            alert("Attendance and Lesson logs saved successfully!");
+            renderDashboard();
+            loadAttendanceForDate();
+        }
+
+        /* FIX 1 ITEM 2 & FIX 2 ITEM 6: Monthly Report contains Time (timeIn - timeOut) and Photo */
+        function generateMonthlyReport() {
+            const stId = document.getElementById('reportStudentSelect').value;
+            const month = document.getElementById('reportMonthPicker').value;
+
+            const filtered = appAttendance.filter(a => a.studentId === stId && a.date.startsWith(month));
+            
+            let p = 0, aCount = 0, l = 0, lv = 0;
+            const logBody = document.getElementById('rptLogBody');
+            logBody.innerHTML = '';
+
+            filtered.forEach(log => {
+                if(log.status === 'Present') p++;
+                if(log.status === 'Absent') aCount++;
+                if(log.status === 'Late') l++;
+                if(log.status === 'Leave') lv++;
+
+                const tr = document.createElement('tr');
+                if(log.status === 'Absent') tr.className = "bg-red-50 text-red-700 font-semibold";
+                tr.innerHTML = `
+                    <td class="p-2 border-b">${escapeHtml(log.date || '')}</td>
+                    <td class="p-2 border-b">${escapeHtml(log.status || '')}</td>
+                    <td class="p-2 border-b">${escapeHtml(log.lesson || '-')}</td>
+                    <td class="p-2 border-b">${escapeHtml(log.quality || '-')}</td>
+                    <td class="p-2 border-b">${log.timeIn || log.timeOut ? `${escapeHtml(log.timeIn || '-')} - ${escapeHtml(log.timeOut || '-')}` : '-'}</td>
+                    <td class="p-2 border-b">${log.photo ? `<img src="${escapeHtml(log.photo)}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openPhotoLightbox('${escapeHtml(log.photo)}')">` : 'No Photo'}</td>
+                    <td class="p-2 border-b">${escapeHtml(log.remarks || '-')}</td>
+                `;
+                logBody.appendChild(tr);
+            });
+
+            const totalDays = filtered.length || 1;
+            const pct = Math.round((p / totalDays) * 100);
+
+            document.getElementById('rptPresent').innerText = p;
+            document.getElementById('rptAbsent').innerText = aCount;
+            document.getElementById('rptLate').innerText = l;
+            document.getElementById('rptLeave').innerText = lv;
+            document.getElementById('rptPercentage').innerText = pct + '%';
+            document.getElementById('reportOutputArea').classList.remove('hidden');
+        }
+
+        function openPhotoLightbox(url) {
+            document.getElementById('lightboxImg').src = url;
+            openModal('photoLightboxModal');
+        }
+
+        /* 
+         * ======================================================================================
+         * 6b. COURSES & CURRICULUM MANAGEMENT (FIRESTORE + LOCALSTORAGE SYNC)
+         * ======================================================================================
+         */
+        let coursesSeedChecked = false;
+
+        async function loadCoursesFromFirestore() {
+            // Render cached courses immediately so UI feels instant
+            if (appCourses && appCourses.length > 0) {
+                renderCoursesList();
+            }
+
+            if (isFirebaseAvailable && db) {
+                try {
+                    const snap = await db.collection('courses').get();
+
+                    if (snap.empty && !coursesSeedChecked) {
+                        coursesSeedChecked = true;
+                        // Seed the 4 initial courses once using deterministic doc IDs to prevent duplicates
+                        const batch = db.batch();
+                        DEFAULT_COURSES.forEach(course => {
+                            const docRef = db.collection('courses').doc(course.id);
+                            batch.set(docRef, {
+                                title: course.title,
+                                description: course.description,
+                                order: course.order,
+                                createdAt: Date.now() + course.order
+                            }, { merge: true });
+                        });
+                        await batch.commit();
+                        appCourses = [...DEFAULT_COURSES];
+                    } else {
+                        coursesSeedChecked = true;
+                        appCourses = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+                        appCourses.sort((a, b) => (a.order || a.createdAt || 0) - (b.order || b.createdAt || 0));
+                    }
+
+                    setStoreData('courses', appCourses);
+                    renderCoursesList();
+                    return;
+                } catch (err) {
+                    console.warn("Could not sync courses from Firestore, using local backup:", err);
+                }
+            }
+
+            // Offline / localStorage fallback if no courses exist yet
+            if (!appCourses || appCourses.length === 0) {
+                appCourses = [...DEFAULT_COURSES];
+                setStoreData('courses', appCourses);
+            }
+            renderCoursesList();
+        }
+
+        function renderCoursesList() {
+            const container = document.getElementById('coursesListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!appCourses || appCourses.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-400 col-span-full">No courses added yet. Use the form above to add your first course.</p>';
+                return;
+            }
+
+            appCourses.forEach(course => {
+                const card = document.createElement('div');
+                card.className = "p-4 rounded-xl border border-gray-200 bg-white hover:border-brandBlue/40 transition flex flex-col justify-between gap-3 shadow-sm";
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-start justify-between gap-2">
+                            <h5 class="font-bold text-sm text-brandNavy flex items-center">
+                                <i class="fa-solid fa-book-quran text-brandBlue me-2"></i>
+                                <span>${escapeHtml(course.title)}</span>
+                            </h5>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">${course.description ? escapeHtml(course.description) : '<span class="italic text-gray-400">No description provided.</span>'}</p>
+                    </div>
+                    <div class="flex items-center justify-end space-x-2 border-t border-gray-100 pt-2.5">
+                        <button type="button" onclick="startEditCourse('${escapeHtml(course.id)}')" class="bg-blue-50 hover:bg-blue-100 text-brandBlue px-2.5 py-1 rounded-lg text-xs font-medium transition">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                        </button>
+                        <button type="button" onclick="deleteCourse('${escapeHtml(course.id)}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg text-xs font-medium transition">
+                            <i class="fa-solid fa-trash me-1"></i> Delete
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function saveCourseForm() {
+            const titleInput = document.getElementById('courseTitleInput');
+            const descInput = document.getElementById('courseDescInput');
+            const title = titleInput.value.trim();
+            const description = descInput.value.trim();
+
+            if (!title) {
+                alert("Please enter a Course Title.");
+                titleInput.focus();
+                return;
+            }
+
+            const submitBtn = document.getElementById('courseSubmitBtn');
+            submitBtn.disabled = true;
+
+            try {
+                if (editingCourseId) {
+                    const idx = appCourses.findIndex(c => c.id === editingCourseId);
+                    if (idx !== -1) {
+                        appCourses[idx] = { ...appCourses[idx], title, description, updatedAt: Date.now() };
+                    }
+                    if (isFirebaseAvailable && db) {
+                        await db.collection('courses').doc(editingCourseId).set({
+                            title,
+                            description,
+                            updatedAt: Date.now()
+                        }, { merge: true });
+                    }
+                    cancelEditCourse();
+                } else {
+                    const newId = 'course-' + Date.now();
+                    const newCourse = {
+                        id: newId,
+                        title,
+                        description,
+                        order: appCourses.length + 1,
+                        createdAt: Date.now()
+                    };
+                    if (isFirebaseAvailable && db) {
+                        await db.collection('courses').doc(newId).set(newCourse);
+                    }
+                    appCourses.push(newCourse);
+                    titleInput.value = '';
+                    descInput.value = '';
+                }
+
+                setStoreData('courses', appCourses);
+                renderCoursesList();
+            } catch (err) {
+                console.error("Error saving course:", err);
+                alert("Could not save course to Firebase. Saved locally.");
+                setStoreData('courses', appCourses);
+                renderCoursesList();
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        function startEditCourse(courseId) {
+            const course = appCourses.find(c => c.id === courseId);
+            if (!course) return;
+
+            editingCourseId = courseId;
+            document.getElementById('courseTitleInput').value = course.title || '';
+            document.getElementById('courseDescInput').value = course.description || '';
+            document.getElementById('courseSubmitBtn').innerText = 'Update Course';
+            document.getElementById('courseCancelBtn').classList.remove('hidden');
+            document.getElementById('courseTitleInput').focus();
+        }
+
+        function cancelEditCourse() {
+            editingCourseId = null;
+            document.getElementById('courseTitleInput').value = '';
+            document.getElementById('courseDescInput').value = '';
+            document.getElementById('courseSubmitBtn').innerText = 'Add Course';
+            document.getElementById('courseCancelBtn').classList.add('hidden');
+        }
+
+        async function deleteCourse(courseId) {
+            if (!confirm("Are you sure you want to delete this course?")) return;
+
+            if (editingCourseId === courseId) {
+                cancelEditCourse();
+            }
+
+            try {
+                if (isFirebaseAvailable && db) {
+                    await db.collection('courses').doc(courseId).delete();
+                }
+            } catch (err) {
+                console.error("Error deleting course from Firestore:", err);
+            }
+
+            appCourses = appCourses.filter(c => c.id !== courseId);
+            setStoreData('courses', appCourses);
+            renderCoursesList();
+        }
+
+        /* 
+         * ======================================================================================
+         * 7. PARENT PORTAL DATA LOADER (FIX 1 ITEM 3 & FIX 2 ITEMS 1-6)
+         * ======================================================================================
+         */
+
+        /* FIX 2 ITEM 2: Remove 'lessons' from array in switchParentTab() */
+        function switchParentTab(tabName) {
+            document.querySelectorAll('.parent-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`ptab-${tabName}-content`)?.classList.remove('hidden');
+            ['overview', 'attendance', 'fees'].forEach(t => {
+                const btn = document.getElementById('ptab-' + t);
+                if (!btn) return;
+                btn.className = t === tabName
+                    ? "px-3 py-1.5 rounded-md bg-brandBlue text-white whitespace-nowrap"
+                    : "px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 whitespace-nowrap";
+            });
+        }
+
+        function switchParentChild(studentId) {
+            loadParentPortalData(studentId);
+            syncParentCloudData(studentId);
+        }
+
+        async function syncParentCloudData(studentId) {
+            if (!(isFirebaseAvailable && db) || !studentId) return;
+            try {
+                const [stDoc, attSnap, acadDoc, feeSnap, hwSnap] = await Promise.all([
+                    db.collection('students').doc(studentId).get(),
+                    db.collection('attendance').where('studentId', '==', studentId).get(),
+                    db.collection('academics').doc(studentId).get(),
+                    db.collection('fees').where('studentId', '==', studentId).get(),
+                    db.collection('homework').get()
+                ]);
+
+                if (stDoc.exists) {
+                    const stData = { ...stDoc.data(), id: stDoc.id };
+                    appStudents = appStudents.filter(s => s.id !== studentId);
+                    appStudents.push(stData);
+                    setStoreData('students', appStudents);
+                }
+
+                if (!attSnap.empty) {
+                    const cloudAtt = attSnap.docs.map(d => d.data());
+                    appAttendance = appAttendance.filter(a => a.studentId !== studentId).concat(cloudAtt);
+                    setStoreData('attendance', appAttendance);
+                }
+
+                if (acadDoc.exists) {
+                    appAcademics[studentId] = acadDoc.data();
+                    setStoreData('academics', appAcademics);
+                }
+
+                if (!feeSnap.empty) {
+                    const cloudFees = feeSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+                    appFees = appFees.filter(f => f.studentId !== studentId).concat(cloudFees);
+                    setStoreData('fees', appFees);
+                }
+
+                if (!hwSnap.empty) {
+                    appHomework = hwSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+                    setStoreData('homework', appHomework);
+                }
+
+                loadParentPortalData(studentId);
+            } catch (err) {
+                console.warn("Parent Portal Firestore sync fallback to localStorage:", err);
+            }
+        }
+
+        /* FIX 1 ITEM 3 & FIX 2 ITEM 6: parentAttendanceTable includes Time & Photo columns */
+        function loadParentPortalData(studentId) {
+            currentParentViewStudentId = studentId;
+            const st = appStudents.find(s => s.id === studentId) || appStudents[0];
+            if (!st) return;
+
+            document.getElementById('parentActiveChildName').innerText = st.name;
+            document.getElementById('parentActiveChildClass').innerText = `Class: ${st.class}`;
+
+            const acad = appAcademics[st.id] || {};
+            document.getElementById('parentStatProgress').innerText = (acad.progress || 0) + '%';
+            document.getElementById('parentStatTestScore').innerText = acad.testScore ? `Test: ${acad.testScore}` : '';
+            document.getElementById('parentTeacherFeedback').innerText = acad.feedback || "No feedback recorded yet.";
+
+            const stAtt = appAttendance.filter(a => a.studentId === st.id).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+            const presentCount = stAtt.filter(a => a.status === 'Present').length;
+            const totalCount = stAtt.length || 1;
+            document.getElementById('parentStatAttendance').innerText = stAtt.length ? Math.round((presentCount / totalCount) * 100) + '%' : '100%';
+
+            const lastLesson = stAtt.find(a => a.lesson);
+            document.getElementById('parentStatQuran').innerText = lastLesson ? lastLesson.lesson : 'Surah Al-Baqarah 1-20';
+            document.getElementById('parentStatQuranDate').innerText = lastLesson ? `Last updated: ${lastLesson.date}` : 'Last updated today';
+
+            const stFees = appFees.filter(f => f.studentId === st.id);
+            const hasUnpaid = stFees.some(f => f.status === 'Unpaid');
+            const feeBadge = document.getElementById('parentStatFeeStatus');
+            feeBadge.innerText = hasUnpaid ? "Unpaid" : "Paid";
+            feeBadge.className = hasUnpaid ? "text-2xl font-bold text-red-600 mt-1" : "text-2xl font-bold text-green-600 mt-1";
+
+            const attBody = document.getElementById('parentAttendanceTable');
+            if (attBody) {
+                attBody.innerHTML = '';
+                stAtt.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="p-2 border-b">${escapeHtml(log.date || '')}</td>
+                        <td class="p-2 border-b font-semibold ${log.status === 'Absent' ? 'text-red-600' : 'text-green-600'}">${escapeHtml(log.status || '')}</td>
+                        <td class="p-2 border-b">${escapeHtml(log.lesson || '-')}</td>
+                        <td class="p-2 border-b">${escapeHtml(log.quality || '-')}</td>
+                        <td class="p-2 border-b">${log.timeIn || log.timeOut ? `${escapeHtml(log.timeIn || '-')} - ${escapeHtml(log.timeOut || '-')}` : '-'}</td>
+                        <td class="p-2 border-b">${log.photo ? `<img src="${escapeHtml(log.photo)}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openPhotoLightbox('${escapeHtml(log.photo)}')">` : 'No Photo'}</td>
+                        <td class="p-2 border-b">${escapeHtml(log.remarks || '-')}</td>
+                    `;
+                    attBody.appendChild(tr);
+                });
+            }
+
+            const feeList = document.getElementById('parentFeeList');
+            if (feeList) {
+                feeList.innerHTML = '';
+                stFees.forEach(f => {
+                    const paid = f.status !== 'Unpaid';
+                    const div = document.createElement('div');
+                    div.className = "p-3 border rounded-lg flex justify-between items-center text-xs";
+                    div.innerHTML = `<div><strong>Month: ${escapeHtml(f.month || '-')}</strong></div>
+                                     <span class="px-2 py-0.5 rounded-full font-semibold ${paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${paid ? 'Paid' : 'Unpaid'}</span>`;
+                    feeList.appendChild(div);
+                });
+            }
+        }
+
+        /* 
+         * ======================================================================================
+         * 8. ACADEMICS, FEES & ANNOUNCEMENTS
+         * ======================================================================================
+         */
+        async function saveAcademicProgress() {
+            const stId = document.getElementById('acadStudentSelect').value;
+            const pct = document.getElementById('acadProgressPercent').value;
+            const score = document.getElementById('acadTestScore').value;
+            const feedback = document.getElementById('acadFeedback').value;
+
+            const record = { progress: pct, testScore: score, feedback: feedback };
+            appAcademics[stId] = record;
+            setStoreData('academics', appAcademics);
+
+            if (isFirebaseAvailable && db) {
+                try {
+                    await db.collection('academics').doc(stId).set(record, { merge: true });
+                } catch (err) {
+                    console.error("Error saving academic progress to Firestore:", err);
+                }
+            }
+
+            alert("Academic progress saved!");
+        }
+
+        function renderFeeTable() {
+            const tbody = document.getElementById('feeTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            appFees.forEach(fee => {
+                const st = appStudents.find(s => s.id === fee.studentId) || { name: 'Unknown' };
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="p-3 font-medium text-gray-800">${escapeHtml(st.name)}</td>
+                    <td class="p-3">${escapeHtml(fee.month)}</td>
+                    <td class="p-3 font-semibold">PKR ${fee.amount}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-bold ${fee.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${fee.status}
+                        </span>
+                    </td>
+                    <td class="p-3 text-xs text-gray-500">${escapeHtml(fee.method)}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="printReceipt('${fee.id}')" class="text-brandBlue hover:underline text-xs font-medium">
+                            <i class="fa-solid fa-print me-1"></i> View Receipt
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function saveFeeRecord() {
+            const studentId = document.getElementById('mFeeStudent').value;
+            const month = document.getElementById('mFeeMonth').value;
+            const amount = document.getElementById('mFeeAmount').value;
+            const status = document.getElementById('mFeeStatus').value;
+            const method = document.getElementById('mFeeMethod').value;
+
+            const newFee = { id: 'F-' + Date.now().toString().slice(-4), studentId, month, amount, status, method };
+            appFees.push(newFee);
+            setStoreData('fees', appFees);
+
+            if (isFirebaseAvailable && db) {
+                try {
+                    await db.collection('fees').doc(newFee.id).set(newFee, { merge: true });
+                } catch (err) {
+                    console.error("Error saving fee record to Firestore:", err);
+                }
+            }
+
+            closeModal('addFeeModal');
+            renderFeeTable();
+            renderDashboard();
+        }
+
+        function printReceipt(feeId) {
+            const fee = appFees.find(f => f.id === feeId);
+            if(!fee) return;
+            const st = appStudents.find(s => s.id === fee.studentId) || { name: 'Student' };
+
+            document.getElementById('rNum').innerText = '#' + fee.id;
+            document.getElementById('rName').innerText = st.name;
+            document.getElementById('rMonth').innerText = fee.month;
+            document.getElementById('rMethod').innerText = fee.method;
+            document.getElementById('rAmount').innerText = 'PKR ' + fee.amount;
+
+            openModal('receiptModal');
+        }
+
+        function renderHomeworkCards() {
+            const container = document.getElementById('homeworkCardsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            appHomework.forEach(hw => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-2";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-gray-800 text-sm">${escapeHtml(hw.title)}</h4>
+                        <span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Due: ${hw.dueDate}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 truncate">${escapeHtml(hw.link)}</p>
+                    <a href="${escapeHtml(hw.link)}" target="_blank" rel="noopener noreferrer" class="inline-block text-xs text-brandBlue hover:underline font-medium">Open Worksheet / Link &rarr;</a>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function saveHomework() {
+            const title = document.getElementById('mHwTitle').value;
+            const dueDate = document.getElementById('mHwDueDate').value;
+            const link = document.getElementById('mHwLink').value;
+
+            const newHw = { id: 'HW-' + Date.now(), title, dueDate, link };
+            appHomework.push(newHw);
+            setStoreData('homework', appHomework);
+
+            if (isFirebaseAvailable && db) {
+                try {
+                    await db.collection('homework').doc(newHw.id).set(newHw, { merge: true });
+                } catch (err) {
+                    console.error("Error saving homework to Firestore:", err);
+                }
+            }
+
+            closeModal('addHomeworkModal');
+            renderHomeworkCards();
+        }
+
+        function renderAnnouncementsList() {
+            const container = document.getElementById('announcementsListFull');
+            if (!container) return;
+            container.innerHTML = '';
+
+            appAnnouncements.forEach(a => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-1";
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-brandBlue">${escapeHtml(a.type)}</span>
+                        <span class="text-[10px] text-gray-400">${a.date || ''}</span>
+                    </div>
+                    <h4 class="font-bold text-gray-800 text-sm">${escapeHtml(a.title)}</h4>
+                    <p class="text-xs text-gray-600">${escapeHtml(a.msg)}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function saveAnnouncement() {
+            const title = document.getElementById('mNoticeTitle').value;
+            const type = document.getElementById('mNoticeType').value;
+            const msg = document.getElementById('mNoticeMsg').value;
+
+            appAnnouncements.push({ id: 'A-' + Date.now(), title, type, msg, date: todayStr });
+            setStoreData('announcements', appAnnouncements);
+
+            closeModal('addNoticeModal');
+            renderAnnouncementsList();
+            renderDashboard();
+        }
+
+        function renderTimetable() {
+            const tbody = document.getElementById('timetableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            appTimetable.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-medium">${escapeHtml(t.day)} <br/><span class="text-xs text-gray-400">${escapeHtml(t.time)}</span></td>
+                    <td class="p-3 font-semibold text-brandNavy">${escapeHtml(t.subject)}</td>
+                    <td class="p-3 text-xs text-gray-500">Class Teacher</td>
+                    <td class="p-3"><a href="${escapeHtml(t.link)}" target="_blank" rel="noopener noreferrer" class="text-xs text-white bg-brandBlue px-2.5 py-1 rounded-lg inline-block">Join Live</a></td>
+                    <td class="p-3">${t.video ? `<a href="${escapeHtml(t.video)}" target="_blank" rel="noopener noreferrer" class="text-xs text-purple-600 underline">Watch</a>` : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function saveClassSchedule() {
+            const day = document.getElementById('mClassDay').value;
+            const time = document.getElementById('mClassTime').value;
+            const subject = document.getElementById('mClassSubject').value;
+            const link = document.getElementById('mClassLink').value;
+
+            appTimetable.push({ day, time, subject, link, video: '' });
+            setStoreData('timetable', appTimetable);
+
+            closeModal('addClassModal');
+            renderTimetable();
+        }
+
+        function saveStudentBadge() {
+            const stId = document.getElementById('certStudentSelect').value;
+            const title = document.getElementById('certTitle').value;
+            const url = document.getElementById('certImageURL').value;
+
+            appBadges.push({ studentId: stId, title, url, date: todayStr });
+            setStoreData('badges', appBadges);
+            alert("Badge issued successfully!");
+            renderBadgesList();
+        }
+
+        function renderBadgesList() {
+            const container = document.getElementById('badgesList');
+            if (!container) return;
+            container.innerHTML = '';
+            appBadges.forEach(b => {
+                const st = appStudents.find(s => s.id === b.studentId) || { name: '' };
+                const div = document.createElement('div');
+                div.className = "p-2 bg-slate-50 border rounded flex justify-between items-center";
+                div.innerHTML = `<span><strong>${escapeHtml(st.name)}:</strong> ${escapeHtml(b.title)}</span> <span class="text-[10px] text-gray-400">${b.date}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        /* 
+         * ======================================================================================
+         * 9. DASHBOARD HELPERS & UTILITIES
+         * ======================================================================================
+         */
+        function renderDashboard() {
+            document.getElementById('dashTotalStudents').innerText = appStudents.length;
+            
+            const todayLogs = appAttendance.filter(a => a.date === todayStr);
+            const presentToday = todayLogs.filter(a => a.status === 'Present').length;
+            document.getElementById('dashTodayAttendance').innerText = `${presentToday} / ${appStudents.length}`;
+
+            const pending = appFees.filter(f => f.status === 'Unpaid').length;
+            document.getElementById('dashPendingFees').innerText = pending;
+
+            const dashAnc = document.getElementById('dashAnnouncementsList');
+            if (dashAnc) {
+                dashAnc.innerHTML = '';
+                appAnnouncements.slice(0, 3).forEach(a => {
+                    const div = document.createElement('div');
+                    div.className = "p-2.5 bg-slate-50 rounded-lg text-xs border-l-2 border-brandBlue space-y-1";
+                    div.innerHTML = `<span class="font-bold text-gray-800">${escapeHtml(a.title)}</span><p class="text-gray-500">${escapeHtml(a.msg)}</p>`;
+                    dashAnc.appendChild(div);
+                });
+            }
+        }
+
+        function populateDropdowns() {
+            const selectors = ['reportStudentSelect', 'acadStudentSelect', 'mFeeStudent', 'certStudentSelect'];
+            selectors.forEach(id => {
+                const el = document.getElementById(id);
+                if(!el) return;
+                el.innerHTML = '';
+                appStudents.forEach(st => {
+                    const opt = document.createElement('option');
+                    opt.value = st.id;
+                    opt.innerText = `${st.name} (${st.class})`;
+                    el.appendChild(opt);
+                });
+            });
+
+            const parentDropdown = document.getElementById('childDropdown');
+            if (parentDropdown) {
+                parentDropdown.innerHTML = '';
+                appStudents.forEach(st => {
+                    const opt = document.createElement('option');
+                    opt.value = st.id;
+                    opt.innerText = st.name;
+                    parentDropdown.appendChild(opt);
+                });
+            }
+        }
+
+        function renderAnalyticsChart() {
+            const ctx = document.getElementById('dashAnalyticsChart');
+            if(!ctx) return;
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Excellent', 'Good', 'Weak'],
+                    datasets: [{
+                        label: 'Lesson Quality Distribution',
+                        data: [12, 5, 2],
+                        backgroundColor: ['#10B981', '#3B82F6', '#EF4444']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function copyToClipboard(text) {
+            const tempInput = document.createElement('input');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            alert("Parent Portal link copied to clipboard!");
+        }
+
+        function openModal(id) { document.getElementById(id)?.classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+        initializeView();
+    </script>
+</body>
+</html>
