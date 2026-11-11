@@ -415,7 +415,7 @@
                         <h3 class="font-bold text-lg text-brandNavy">Fee Management & Billing</h3>
                         <p class="text-xs text-gray-500">Record tuition fee vouchers directly in Firestore.</p>
                     </div>
-                    <button onclick="openAddFeeModal()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">
+                    <button id="issueFeeBtn" onclick="openFeeModal()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition flex items-center">
                         <i class="fa-solid fa-plus me-1"></i> Issue Fee Record
                     </button>
                 </div>
@@ -713,50 +713,6 @@
                 <button onclick="navigateLightbox(1)" class="absolute right-2 z-10 bg-white/20 hover:bg-white/40 text-white rounded-full p-3 transition shadow">
                     <i class="fa-solid fa-chevron-right text-lg"></i>
                 </button>
-    <!-- Add / Edit Fee Modal -->
-    <div id="addFeeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
-            <div class="flex justify-between items-center border-b pb-2">
-                <h3 id="feeModalTitle" class="font-bold text-brandNavy">Record Fee Invoice</h3>
-                <button onclick="closeModal('addFeeModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <input type="hidden" id="mFeeEditId">
-            <div class="space-y-3 text-sm">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Student</label>
-                    <select id="mFeeStudent" class="w-full border border-gray-300 rounded-lg p-2"></select>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Month</label>
-                        <input type="month" id="mFeeMonth" class="w-full border border-gray-300 rounded-lg p-2">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Amount (PKR)</label>
-                        <input type="number" id="mFeeAmount" placeholder="3000" class="w-full border border-gray-300 rounded-lg p-2">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Status</label>
-                        <select id="mFeeStatus" class="w-full border border-gray-300 rounded-lg p-2">
-                            <option value="Paid">Paid</option>
-                            <option value="Unpaid">Unpaid</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Payment Method</label>
-                        <select id="mFeeMethod" class="w-full border border-gray-300 rounded-lg p-2">
-                            <option>JazzCash</option>
-                            <option>EasyPaisa</option>
-                            <option>Bank Transfer</option>
-                            <option>Cash</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="flex justify-end space-x-2 border-t pt-3">
-                <button onclick="saveFeeRecord()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs">Save Voucher</button>
             </div>
         </div>
     </div>
@@ -1070,7 +1026,8 @@
 
                     appFees = [];
                     rawFees.forEach(fee => {
-                        const monthValid = fee.month && /^\d{4}-\d{2}$/.test(fee.month);
+                        const mVal = fee.billingMonth || fee.month;
+                        const monthValid = mVal && /^\d{4}-\d{2}$/.test(mVal);
                         const studentExists = fee.studentId && validStudentIds.has(fee.studentId);
                         
                         if (!studentExists || !monthValid) {
@@ -1127,7 +1084,7 @@
             const todayAttEl = document.getElementById('dashTodayAttendance');
             if (todayAttEl) todayAttEl.innerText = `${presentLogs.length} / ${appStudents.length}`;
 
-            const pendingFees = appFees.filter(f => f.status === 'Unpaid');
+            const pendingFees = appFees.filter(f => f.status === 'Unpaid' || f.status === 'Pending' || f.status === 'Overdue');
             const pendingFeesEl = document.getElementById('dashPendingFees');
             if (pendingFeesEl) pendingFeesEl.innerText = pendingFees.length;
 
@@ -1711,7 +1668,7 @@
             document.getElementById('parentStatQuranDate').innerText = lastLesson ? `Last updated: ${lastLesson.date}` : 'Last updated today';
 
             const stFees = appFees.filter(f => f.studentId === st.id);
-            const hasUnpaid = stFees.some(f => f.status === 'Unpaid');
+            const hasUnpaid = stFees.some(f => f.status === 'Unpaid' || f.status === 'Pending' || f.status === 'Overdue');
             const feeBadge = document.getElementById('parentStatFeeStatus');
             feeBadge.innerText = hasUnpaid ? "Unpaid" : "Paid";
             feeBadge.className = hasUnpaid ? "text-2xl font-bold text-red-600 mt-1" : "text-2xl font-bold text-green-600 mt-1";
@@ -1785,11 +1742,11 @@
             if (feeList) {
                 feeList.innerHTML = '';
                 stFees.forEach(f => {
-                    const paid = f.status !== 'Unpaid';
+                    const paid = f.status === 'Paid';
                     const div = document.createElement('div');
                     div.className = "p-3 border rounded-lg flex justify-between items-center text-xs bg-white shadow-sm";
-                    div.innerHTML = `<div><strong>Month: ${escapeHtml(f.month || '-')}</strong></div>
-                                     <span class="px-2.5 py-0.5 rounded-full font-semibold ${paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${paid ? 'Paid' : 'Unpaid'}</span>`;
+                    div.innerHTML = `<div><strong>Month: ${escapeHtml(f.billingMonth || f.month || '-')}</strong></div>
+                                     <span class="px-2.5 py-0.5 rounded-full font-semibold ${paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${escapeHtml(f.status || (paid ? 'Paid' : 'Unpaid'))}</span>`;
                     feeList.appendChild(div);
                 });
             }
@@ -1826,20 +1783,20 @@
 
             validFees.forEach(fee => {
                 const st = appStudents.find(s => s.id === fee.studentId);
-                const displayMonth = fee.month && /^\d{4}-\d{2}$/.test(fee.month) ? fee.month : 'Invalid Date';
+                const displayMonth = (fee.billingMonth || fee.month) && /^\d{4}-\d{2}$/.test(fee.billingMonth || fee.month) ? (fee.billingMonth || fee.month) : 'Invalid Date';
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition";
                 tr.innerHTML = `
-                    <td class="p-3 font-medium text-brandNavy">${escapeHtml(st.name)} <br/><span class="text-[10px] text-gray-400">ID: ${escapeHtml(st.id)}</span></td>
+                    <td class="p-3 font-medium text-brandNavy">${escapeHtml(fee.studentName || (st ? st.name : ''))} <br/><span class="text-[10px] text-gray-400">ID: ${escapeHtml(fee.studentId)}</span></td>
                     <td class="p-3">${escapeHtml(displayMonth)}</td>
                     <td class="p-3 font-semibold text-gray-800">PKR ${escapeHtml(fee.amount || '0')}</td>
                     <td class="p-3">
                         <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${fee.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                            ${escapeHtml(fee.status || 'Unpaid')}
+                            ${escapeHtml(fee.status || 'Pending')}
                         </span>
                     </td>
-                    <td class="p-3 text-xs text-gray-500">${escapeHtml(fee.method || 'Cash')}</td>
+                    <td class="p-3 text-xs text-gray-500">${escapeHtml(fee.paymentMethod || fee.method || 'Cash')}</td>
                     <td class="p-3 text-center space-x-1 whitespace-nowrap">
                         <button onclick="editFeeRecord('${fee.id}')" class="bg-blue-50 hover:bg-blue-100 text-brandBlue px-2.5 py-1 rounded-lg text-xs font-medium">
                             <i class="fa-solid fa-pen-to-square me-1"></i> Edit
@@ -1856,85 +1813,155 @@
             });
         }
 
-        function openAddFeeModal() {
-            document.getElementById('mFeeEditId').value = '';
-            document.getElementById('mFeeMonth').value = todayStr.substring(0, 7);
-            document.getElementById('mFeeAmount').value = '';
-            document.getElementById('mFeeStatus').value = 'Paid';
-            document.getElementById('mFeeMethod').value = 'Cash';
-            document.getElementById('feeModalTitle').innerText = 'Record Fee Invoice';
-            populateDropdowns();
-            openModal('addFeeModal');
-        }
-
         function editFeeRecord(feeId) {
             const fee = appFees.find(f => f.id === feeId);
             if (!fee) return;
 
-            document.getElementById('mFeeEditId').value = fee.id;
-            populateDropdowns();
-            document.getElementById('mFeeStudent').value = fee.studentId || '';
-            document.getElementById('mFeeMonth').value = fee.month || todayStr.substring(0, 7);
-            document.getElementById('mFeeAmount').value = fee.amount || '';
-            document.getElementById('mFeeStatus').value = fee.status || 'Paid';
-            document.getElementById('mFeeMethod').value = fee.method || 'Cash';
-            document.getElementById('feeModalTitle').innerText = 'Edit Fee Voucher';
-            openModal('addFeeModal');
+            window.openFeeModal();
+            document.getElementById('feeStudent').value = fee.studentId || '';
+            document.getElementById('feeMonth').value = fee.billingMonth || fee.month || todayStr.substring(0, 7);
+            document.getElementById('feeAmount').value = fee.amount || '';
+            document.getElementById('feeStatus').value = fee.status || 'Paid';
+            document.getElementById('feePayment').value = fee.paymentMethod || fee.method || 'Cash';
+            document.getElementById('feeModal').setAttribute('data-edit-id', fee.id);
         }
 
-        async function saveFeeRecord() {
-            const editId = document.getElementById('mFeeEditId').value;
-            const studentId = document.getElementById('mFeeStudent').value;
-            const monthInput = document.getElementById('mFeeMonth').value;
-            const amount = document.getElementById('mFeeAmount').value.trim();
-            const status = document.getElementById('mFeeStatus').value;
-            const method = document.getElementById('mFeeMethod').value;
+        async function deleteFeeRecord(feeId) {
+            if (!confirm("Delete this fee voucher from Firestore?")) return;
+            try {
+                await db.collection('fees').doc(feeId).delete();
+                appFees = appFees.filter(f => f.id !== feeId);
+                renderFeeTable();
+                renderDashboard();
+            } catch (err) {
+                console.error("Error deleting fee record:", err);
+                alert("Failed to delete fee voucher.");
+            }
+        }
+
+        function printReceipt(feeId) {
+            const fee = appFees.find(f => f.id === feeId);
+            if (!fee) return;
+            const st = appStudents.find(s => s.id === fee.studentId);
+            document.getElementById('rNum').innerText = `#INV-${fee.id.substring(0, 8)}`;
+            document.getElementById('rName').innerText = fee.studentName || (st ? st.name : '-');
+            document.getElementById('rMonth').innerText = fee.billingMonth || fee.month || '-';
+            document.getElementById('rMethod').innerText = fee.paymentMethod || fee.method || 'Cash';
+            document.getElementById('rAmount').innerText = `PKR ${fee.amount || '0'}`;
+            openModal('receiptModal');
+        }
+
+        /* 
+         * GLOBAL REBUILT FEE MODAL ENGINE (EXPLICIT WINDOW SCOPE)
+         */
+        window.openFeeModal = function() {
+            const select = document.getElementById('feeStudent');
+            if (select) {
+                select.innerHTML = '';
+                if (appStudents.length === 0) {
+                    select.innerHTML = '<option value="">-- No Students Enrolled --</option>';
+                } else {
+                    appStudents.forEach(st => {
+                        const opt = document.createElement('option');
+                        opt.value = st.id;
+                        opt.innerText = `${st.name} (${st.class})`;
+                        select.appendChild(opt);
+                    });
+                }
+            }
+
+            const monthInput = document.getElementById('feeMonth');
+            if (monthInput) monthInput.value = todayStr.substring(0, 7);
+
+            const amountInput = document.getElementById('feeAmount');
+            if (amountInput) amountInput.value = '';
+
+            const statusSelect = document.getElementById('feeStatus');
+            if (statusSelect) statusSelect.value = 'Pending';
+
+            const paymentSelect = document.getElementById('feePayment');
+            if (paymentSelect) paymentSelect.value = 'Cash';
+
+            const modal = document.getElementById('feeModal');
+            if (modal) {
+                modal.removeAttribute('data-edit-id');
+                modal.style.display = 'flex';
+                modal.classList.remove('hidden');
+            }
+            console.log('fee modal opened');
+        };
+
+        window.closeFeeModal = function() {
+            const modal = document.getElementById('feeModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.add('hidden');
+                modal.removeAttribute('data-edit-id');
+            }
+        };
+
+        window.saveFee = async function() {
+            const studentId = document.getElementById('feeStudent').value;
+            const billingMonth = document.getElementById('feeMonth').value;
+            const amountVal = document.getElementById('feeAmount').value;
+            const status = document.getElementById('feeStatus').value;
+            const paymentMethod = document.getElementById('feePayment').value;
+            const editId = document.getElementById('feeModal')?.getAttribute('data-edit-id');
 
             if (!studentId) {
                 alert("Please select a student.");
                 return;
             }
 
-            if (!monthInput || !/^\d{4}-\d{2}$/.test(monthInput)) {
-                alert("Please select a valid billing month (YYYY-MM).");
+            if (!billingMonth || !/^\d{4}-\d{2}$/.test(billingMonth)) {
+                alert("Please select a valid billing month.");
                 return;
             }
 
-            if (!amount || isNaN(amount) || Number(amount) <= 0) {
-                alert("Please enter a valid amount in PKR.");
+            const amountNum = Number(amountVal);
+            if (!amountVal || isNaN(amountNum) || amountNum <= 0) {
+                alert("Please enter a valid amount.");
                 return;
             }
 
             const st = appStudents.find(s => s.id === studentId);
+            const studentName = st ? st.name : '';
 
-            if (editId) {
-                const updatedFee = { studentId, studentName: st ? st.name : '', month: monthInput, amount, status, method };
-                await db.collection('fees').doc(editId).set(updatedFee, { merge: true });
-                const idx = appFees.findIndex(f => f.id === editId);
-                if (idx !== -1) {
-                    appFees[idx] = { ...appFees[idx], ...updatedFee };
+            try {
+                if (editId) {
+                    const updateObj = { studentId, studentName, billingMonth, amount: amountNum, status, paymentMethod };
+                    await db.collection('fees').doc(editId).set(updateObj, { merge: true });
+                    const idx = appFees.findIndex(f => f.id === editId);
+                    if (idx !== -1) appFees[idx] = { ...appFees[idx], ...updateObj };
+                } else {
+                    const docRef = await db.collection('fees').add({
+                        studentId,
+                        studentName,
+                        billingMonth,
+                        amount: amountNum,
+                        status,
+                        paymentMethod,
+                        createdAt: new Date()
+                    });
+                    appFees.push({
+                        id: docRef.id,
+                        studentId,
+                        studentName,
+                        billingMonth,
+                        amount: amountNum,
+                        status,
+                        paymentMethod
+                    });
                 }
-            } else {
-                const docId = 'FEE-' + Date.now();
-                const newFee = { 
-                    id: docId, 
-                    studentId, 
-                    studentName: st ? st.name : '', 
-                    month: monthInput, 
-                    amount, 
-                    status, 
-                    method,
-                    createdAt: Date.now()
-                };
 
-                await db.collection('fees').doc(docId).set(newFee);
-                appFees.push(newFee);
+                window.closeFeeModal();
+                renderFeeTable();
+                renderDashboard();
+            } catch (err) {
+                console.error("Failed to save fee record to Firestore:", err);
+                alert("Error saving fee voucher. Please try again.");
             }
-
-            closeModal('addFeeModal');
-            renderFeeTable();
-            renderDashboard();
-        }
+        };
 
         function renderHomeworkCards() {
             const container = document.getElementById('homeworkCardsContainer');
@@ -2181,7 +2208,7 @@
         }
 
         function populateDropdowns() {
-            const selectors = ['reportStudentSelect', 'acadStudentSelect', 'mFeeStudent', 'certStudentSelect'];
+            const selectors = ['reportStudentSelect', 'acadStudentSelect', 'certStudentSelect'];
             selectors.forEach(id => {
                 const el = document.getElementById(id);
                 if(!el) return;
@@ -2237,7 +2264,65 @@
         function openModal(id) { document.getElementById(id)?.classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 
+        document.addEventListener('DOMContentLoaded', () => {
+            const issueBtn = document.getElementById('issueFeeBtn');
+            if (issueBtn) {
+                issueBtn.addEventListener('click', window.openFeeModal);
+            }
+        });
+
         initializeView();
     </script>
+
+    <!-- REBUILT FEE MODAL AT END OF BODY -->
+    <div id="feeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden" style="display: none;">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-brandNavy">Issue Fee Record</h3>
+                <button type="button" onclick="window.closeFeeModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Student *</label>
+                    <select id="feeStudent" class="w-full border border-gray-300 rounded-lg p-2 bg-white"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Billing Month *</label>
+                        <input type="month" id="feeMonth" class="w-full border border-gray-300 rounded-lg p-2 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Amount (PKR) *</label>
+                        <input type="number" id="feeAmount" placeholder="3000" class="w-full border border-gray-300 rounded-lg p-2 bg-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+                        <select id="feeStatus" class="w-full border border-gray-300 rounded-lg p-2 bg-white">
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Overdue">Overdue</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Payment Method</label>
+                        <select id="feePayment" class="w-full border border-gray-300 rounded-lg p-2 bg-white">
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="JazzCash">JazzCash</option>
+                            <option value="EasyPaisa">EasyPaisa</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-3">
+                <button type="button" onclick="window.closeFeeModal()" class="px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 text-xs">Cancel</button>
+                <button type="button" id="saveFeeBtn" onclick="window.saveFee()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs hover:bg-blue-600 transition">Save Fee Record</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
