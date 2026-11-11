@@ -29,7 +29,6 @@
     <!-- Firebase SDKs (Compat version) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; }
@@ -59,7 +58,7 @@
             #parentPortalHeader > div:last-child { flex-wrap: wrap; }
         }
         .img-modal-overlay {
-            background-color: rgba(0,0,0,0.75);
+            background-color: rgba(0,0,0,0.85);
         }
     </style>
     <script>
@@ -73,9 +72,7 @@
     <!-- ==================== HEADER SECTION ==================== -->
     <header class="bg-brandNavy text-white px-4 py-3 shadow-md border-b-2 border-brandBlue no-print">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-            <!-- Logo & Brand Title -->
             <div class="flex items-center space-x-3 text-center sm:text-left">
-                <!-- Embedded Logo Placeholder/Asset with Fallback -->
                 <img id="headerLogo" src="logo.png" alt="Ikhlas International Academy" class="h-11 rounded object-cover border border-blue-400/40"
                      onerror="this.onerror=null; this.src='https://placehold.co/120x120/0A1F44/2A7FFF?text=IKHLAS';">
                 <div>
@@ -88,13 +85,11 @@
                 </div>
             </div>
             
-            <!-- Connection & Mode Switcher Controls -->
             <div class="flex items-center space-x-3 text-xs">
                 <span id="storageBadge" class="bg-blue-900/60 border border-blue-500/30 text-blue-200 px-3 py-1 rounded-full flex items-center">
-                    <i class="fa-solid fa-cloud me-1.5 text-brandBlue"></i> Sync: <span id="syncStatus" class="ml-1 font-semibold text-green-400">Ready</span>
+                    <i class="fa-solid fa-cloud me-1.5 text-brandBlue"></i> Sync: <span id="syncStatus" class="ml-1 font-semibold text-green-400">Firestore Cloud</span>
                 </span>
                 
-                <!-- Live Toggle Button for Previewing Parent Portal vs Teacher Mode -->
                 <button onclick="togglePortalModePreview()" id="modeToggleBtn" class="switch-portal-btn bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 px-3 py-1.5 rounded-full font-medium transition flex items-center space-x-1">
                     <i class="fa-solid fa-arrows-rotate me-1 text-xs"></i>
                     <span id="viewModeBadge">
@@ -109,7 +104,7 @@
     <!-- ==================== MAIN CONTENT LAYOUT ==================== -->
     <div id="appContainer" class="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto p-3 sm:p-5 gap-5">
         
-        <!-- TEACHER SIDEBAR NAVIGATION (Hidden in Parent Portal) -->
+        <!-- TEACHER SIDEBAR -->
         <aside id="teacherSidebar" class="w-full md:w-64 bg-white rounded-xl shadow-sm border border-gray-200 p-3 no-print hidden md:block shrink-0">
             <div class="mb-4 px-3 py-2 bg-slate-50 rounded-lg text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Teacher Control Panel
@@ -151,7 +146,7 @@
         <!-- MAIN VIEW CONTENT CONTAINER -->
         <main class="flex-1 min-w-0">
             
-            <!-- PARENT PORTAL HEADER CARD (Visible when ?student= or ?parent= is active) -->
+            <!-- PARENT PORTAL HEADER -->
             <div id="parentPortalHeader" class="hidden bg-white rounded-xl shadow-sm border border-brandBlue/30 p-4 mb-5">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex items-center space-x-3">
@@ -165,34 +160,32 @@
                         </div>
                     </div>
                     
-                    <!-- Child Switcher (Select active demo child for preview) -->
                     <div id="childSelectorContainer" class="flex items-center space-x-2">
                         <label class="text-xs font-semibold text-gray-600">Switch Child:</label>
                         <select id="childDropdown" onchange="switchParentChild(this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg p-2 focus:ring-brandBlue focus:border-brandBlue">
-                            <!-- Populated Dynamically -->
                         </select>
                     </div>
                 </div>
 
-                <!-- Parent Nav Tabs (FIX 2: Removed Lesson Images Tab) -->
+                <!-- PARENT TABS ORDER: Overview | Attendance & Quran | Courses | Fee Status -->
                 <div class="flex overflow-x-auto gap-2 border-t border-gray-100 mt-4 pt-3 text-xs font-medium scrollbar-thin">
                     <button onclick="switchParentTab('overview')" id="ptab-overview" class="px-3 py-1.5 rounded-md bg-brandBlue text-white whitespace-nowrap">Overview</button>
                     <button onclick="switchParentTab('attendance')" id="ptab-attendance" class="px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 whitespace-nowrap">Attendance & Quran</button>
+                    <button onclick="switchParentTab('courses')" id="ptab-courses" class="px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 whitespace-nowrap">Courses</button>
                     <button onclick="switchParentTab('fees')" id="ptab-fees" class="px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 whitespace-nowrap">Fee Status</button>
                 </div>
             </div>
 
-            <p id="reportLoading" role="status" aria-live="polite" class="hidden bg-white rounded-xl border border-gray-200 p-4 mb-5 text-sm text-gray-500">Loading report...</p>
+            <p id="reportLoading" role="status" aria-live="polite" class="hidden bg-white rounded-xl border border-gray-200 p-4 mb-5 text-sm text-gray-500">Loading data from Firestore...</p>
 
-            <!-- TAB 1: DASHBOARD (Teacher View) -->
+            <!-- TAB 1: DASHBOARD -->
             <div id="tab-dashboard" class="tab-content space-y-5">
-                <!-- Stat Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-xs text-gray-500 font-medium uppercase">Total Students</p>
-                                <h3 id="dashTotalStudents" class="text-2xl font-bold text-brandNavy mt-1">3</h3>
+                                <h3 id="dashTotalStudents" class="text-2xl font-bold text-brandNavy mt-1">0</h3>
                             </div>
                             <div class="p-3 bg-blue-50 text-brandBlue rounded-lg"><i class="fa-solid fa-users text-lg"></i></div>
                         </div>
@@ -201,7 +194,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-xs text-gray-500 font-medium uppercase">Today's Attendance</p>
-                                <h3 id="dashTodayAttendance" class="text-2xl font-bold text-green-600 mt-1">3 / 3</h3>
+                                <h3 id="dashTodayAttendance" class="text-2xl font-bold text-green-600 mt-1">0 / 0</h3>
                             </div>
                             <div class="p-3 bg-green-50 text-green-600 rounded-lg"><i class="fa-solid fa-user-check text-lg"></i></div>
                         </div>
@@ -210,7 +203,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-xs text-gray-500 font-medium uppercase">Pending Fees</p>
-                                <h3 id="dashPendingFees" class="text-2xl font-bold text-red-600 mt-1">1</h3>
+                                <h3 id="dashPendingFees" class="text-2xl font-bold text-red-600 mt-1">0</h3>
                             </div>
                             <div class="p-3 bg-red-50 text-red-600 rounded-lg"><i class="fa-solid fa-clock font-bold text-lg"></i></div>
                         </div>
@@ -218,27 +211,21 @@
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs text-gray-500 font-medium uppercase">Storage Used (Free Tier)</p>
-                                <h3 id="dashStorageUsage" class="text-xl font-bold text-brandNavy mt-1">1.2 MB / 5 GB</h3>
+                                <p class="text-xs text-gray-500 font-medium uppercase">Cloud Database</p>
+                                <h3 class="text-xl font-bold text-green-600 mt-1">Firestore Active</h3>
                             </div>
-                            <div class="p-3 bg-purple-50 text-purple-600 rounded-lg"><i class="fa-solid fa-database text-lg"></i></div>
-                        </div>
-                        <div class="w-full bg-gray-200 h-1.5 rounded-full mt-2 overflow-hidden">
-                            <div id="storageBar" class="bg-brandBlue h-full" style="width: 3%;"></div>
+                            <div class="p-3 bg-purple-50 text-purple-600 rounded-lg"><i class="fa-solid fa-cloud text-lg"></i></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Recent Notices & Quick Class Overview -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
                             <h4 class="font-bold text-gray-800">Recent Announcements</h4>
                             <button onclick="switchTab('announcements')" class="text-xs text-brandBlue hover:underline">View All</button>
                         </div>
-                        <div id="dashAnnouncementsList" class="space-y-3">
-                            <!-- Populated dynamically -->
-                        </div>
+                        <div id="dashAnnouncementsList" class="space-y-3"></div>
                     </div>
                     
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
@@ -255,14 +242,13 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                     <div>
                         <h3 class="font-bold text-lg text-brandNavy">Student Directory</h3>
-                        <p class="text-xs text-gray-500">Manage enrolled students and auto-generate Parent Portal links.</p>
+                        <p class="text-xs text-gray-500">Manage enrolled students synced directly with Firestore.</p>
                     </div>
                     <button onclick="openModal('addStudentModal')" class="bg-brandBlue hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
                         <i class="fa-solid fa-plus me-2"></i> Add New Student
                     </button>
                 </div>
 
-                <!-- Students Table -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
                     <table class="w-full text-left text-sm text-gray-600">
                         <thead class="bg-slate-50 border-b border-gray-200 text-xs uppercase font-semibold text-gray-500">
@@ -274,21 +260,18 @@
                                 <th class="p-3 text-center">Actions & Shareable Links</th>
                             </tr>
                         </thead>
-                        <tbody id="studentsTableBody" class="divide-y divide-gray-100">
-                            <!-- Populated Dynamically -->
-                        </tbody>
+                        <tbody id="studentsTableBody" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
             </div>
 
             <!-- TAB 3: ATTENDANCE & QURAN LOG -->
             <div id="tab-attendance" class="tab-content space-y-5 hidden">
-                <!-- Daily Attendance Recorder Card -->
                 <div class="bg-white p-4 sm:p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
                             <h3 class="font-bold text-lg text-brandNavy">Daily Attendance & Quran Lesson Log</h3>
-                            <p class="text-xs text-gray-500">Mark attendance, lesson quality, and Quran Sabak / Sabqi / Manzil.</p>
+                            <p class="text-xs text-gray-500">Mark attendance, select course, lesson quality, and upload multiple lesson photos.</p>
                         </div>
                         <div class="flex items-center space-x-2 w-full sm:w-auto">
                             <input type="date" id="attendanceDatePicker" class="border border-gray-300 rounded-lg p-2 text-sm bg-gray-50 focus:ring-brandBlue">
@@ -302,16 +285,15 @@
                             <thead class="bg-slate-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
                                     <th class="p-3 min-w-[140px]">Student</th>
-                                    <th class="p-3 min-w-[130px]">Status</th>
-                                    <th class="p-3 min-w-[120px]">Quality</th>
-                                    <th class="p-3 min-w-[180px]">Quran / Topic Progress</th>
-                                    <th class="p-3 min-w-[120px]">Time In / Out</th>
-                                    <th class="p-3 min-w-[160px]">Remarks / Photo</th>
+                                    <th class="p-3 min-w-[110px]">Status</th>
+                                    <th class="p-3 min-w-[150px]">Course</th>
+                                    <th class="p-3 min-w-[100px]">Quality</th>
+                                    <th class="p-3 min-w-[160px]">Quran / Topic Progress</th>
+                                    <th class="p-3 min-w-[110px]">Time In / Out</th>
+                                    <th class="p-3 min-w-[260px]">Remarks / Photos (5+ Upload)</th>
                                 </tr>
                             </thead>
-                            <tbody id="attendanceMarkingBody" class="divide-y divide-gray-100">
-                                <!-- Populated Dynamically with FIX 2 item 4 (<input type="file" class="att-photo">) -->
-                            </tbody>
+                            <tbody id="attendanceMarkingBody" class="divide-y divide-gray-100"></tbody>
                         </table>
                     </div>
                 </div>
@@ -320,15 +302,12 @@
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                     <h4 class="font-bold text-brandNavy text-base">Generate Monthly Attendance & Quran Progress Report</h4>
                     <div class="flex flex-col sm:flex-row gap-3">
-                        <select id="reportStudentSelect" class="border border-gray-300 rounded-lg p-2 text-sm flex-1">
-                            <!-- Populated Dynamically -->
-                        </select>
+                        <select id="reportStudentSelect" class="border border-gray-300 rounded-lg p-2 text-sm flex-1"></select>
                         <input type="month" id="reportMonthPicker" class="border border-gray-300 rounded-lg p-2 text-sm">
                         <button onclick="generateMonthlyReport()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">View Report</button>
                     </div>
 
                     <div id="reportOutputArea" class="hidden border-t border-gray-100 pt-4 space-y-4">
-                        <!-- Stat Summary Header -->
                         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
                             <div class="bg-green-50 p-2 rounded-lg text-green-700">
                                 <span class="block text-xs font-medium">Present</span>
@@ -352,7 +331,6 @@
                             </div>
                         </div>
 
-                        <!-- Day wise log (FIX 1 Item 1 + FIX 2 Item 6: Headers included Time & Photo) -->
                         <div class="overflow-x-auto max-h-60 overflow-y-auto">
                             <table class="w-full text-xs text-left text-gray-600 border border-gray-100">
                                 <thead class="bg-slate-100 uppercase sticky top-0">
@@ -360,35 +338,34 @@
                                         <th class="p-2">Date</th>
                                         <th class="p-2">Status</th>
                                         <th class="p-2">Lesson / Quran Progress</th>
+                                        <th class="p-2">Course</th>
                                         <th class="p-2">Quality</th>
                                         <th class="p-2">Time</th>
-                                        <th class="p-2">Photo</th>
+                                        <th class="p-2">Photos</th>
                                         <th class="p-2">Remarks</th>
                                     </tr>
                                 </thead>
-                                <tbody id="rptLogBody" class="divide-y divide-gray-100">
-                                </tbody>
+                                <tbody id="rptLogBody" class="divide-y divide-gray-100"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Courses & Curriculum Management Card -->
+                <!-- Courses & Curriculum Management -->
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                     <div>
                         <h4 class="font-bold text-brandNavy text-base">Courses & Curriculum</h4>
-                        <p class="text-xs text-gray-500">Add, edit, or manage Quran & Islamic study courses synced across all devices.</p>
+                        <p class="text-xs text-gray-500">Add, edit, or manage Quran & Islamic study courses stored in Firestore.</p>
                     </div>
 
-                    <!-- Add / Edit Course Form -->
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start bg-slate-50 p-3.5 rounded-lg border border-gray-200">
                         <div class="md:col-span-4">
                             <label class="block text-xs font-semibold text-gray-600 mb-1">Course Title *</label>
-                            <input type="text" id="courseTitleInput" placeholder="e.g. Revision Quran" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-brandBlue focus:border-brandBlue">
+                            <input type="text" id="courseTitleInput" placeholder="e.g. Revision Quran" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-brandBlue">
                         </div>
                         <div class="md:col-span-5">
                             <label class="block text-xs font-semibold text-gray-600 mb-1">Description / Schedule</label>
-                            <input type="text" id="courseDescInput" placeholder="Course description or schedule details..." class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-brandBlue focus:border-brandBlue">
+                            <input type="text" id="courseDescInput" placeholder="Course description or schedule..." class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-brandBlue">
                         </div>
                         <div class="md:col-span-3 flex items-end space-x-2 md:pt-5">
                             <button type="button" id="courseSubmitBtn" onclick="saveCourseForm()" class="flex-1 bg-brandBlue hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
@@ -400,10 +377,7 @@
                         </div>
                     </div>
 
-                    <!-- Courses List -->
-                    <div id="coursesListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <!-- Populated Dynamically -->
-                    </div>
+                    <div id="coursesListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
                 </div>
             </div>
 
@@ -414,9 +388,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-600 mb-1">Select Student</label>
-                            <select id="acadStudentSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                                <!-- Options -->
-                            </select>
+                            <select id="acadStudentSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm"></select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-600 mb-1">Course Progress (%)</label>
@@ -428,8 +400,8 @@
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Teacher Feedback & Remarks /  استاد کی رائے</label>
-                        <textarea id="acadFeedback" rows="3" placeholder="Write overall student progress, strengths, and recommendations..." class="w-full border border-gray-300 rounded-lg p-2 text-sm"></textarea>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Teacher Feedback & Remarks</label>
+                        <textarea id="acadFeedback" rows="3" placeholder="Write overall student progress, strengths..." class="w-full border border-gray-300 rounded-lg p-2 text-sm"></textarea>
                     </div>
                     <button onclick="saveAcademicProgress()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">Save Progress</button>
                 </div>
@@ -440,7 +412,7 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                     <div>
                         <h3 class="font-bold text-lg text-brandNavy">Fee Management & Billing</h3>
-                        <p class="text-xs text-gray-500">Record tuition fee vouchers, mark payment status, and issue PDF receipts.</p>
+                        <p class="text-xs text-gray-500">Record tuition fee vouchers directly in Firestore.</p>
                     </div>
                     <button onclick="openModal('addFeeModal')" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600">
                         <i class="fa-solid fa-plus me-1"></i> Issue Fee Record
@@ -459,9 +431,7 @@
                                 <th class="p-3 text-center">Receipt</th>
                             </tr>
                         </thead>
-                        <tbody id="feeTableBody" class="divide-y divide-gray-100">
-                            <!-- Populated Dynamically -->
-                        </tbody>
+                        <tbody id="feeTableBody" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
             </div>
@@ -475,9 +445,7 @@
                     </button>
                 </div>
 
-                <div id="homeworkCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Populated dynamically -->
-                </div>
+                <div id="homeworkCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
 
             <!-- TAB 7: ANNOUNCEMENTS -->
@@ -489,18 +457,15 @@
                     </button>
                 </div>
 
-                <div id="announcementsListFull" class="space-y-3">
-                    <!-- Populated dynamically -->
-                </div>
+                <div id="announcementsListFull" class="space-y-3"></div>
             </div>
 
             <!-- TAB 8: COMMUNICATION -->
             <div id="tab-communication" class="tab-content space-y-5 hidden">
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                    <h3 class="font-bold text-lg text-brandNavy">Parent Inquiries & Meeting Requests</h3>
-                    <p class="text-xs text-gray-500">Messages and requested appointments sent from the Parent Portal.</p>
+                    <h3 class="font-bold text-lg text-brandNavy">Parent Inquiries</h3>
                     <div id="parentInquiriesList" class="space-y-3">
-                        <p class="text-sm text-gray-400">No recent inquiries or requests.</p>
+                        <p class="text-sm text-gray-400">No recent inquiries recorded.</p>
                     </div>
                 </div>
             </div>
@@ -520,13 +485,10 @@
                                     <th class="p-3">Day & Time</th>
                                     <th class="p-3">Subject / Class</th>
                                     <th class="p-3">Teacher</th>
-                                    <th class="p-3">Live Join Link (Teams / Meet)</th>
-                                    <th class="p-3">Recorded Video</th>
+                                    <th class="p-3">Live Join Link</th>
                                 </tr>
                             </thead>
-                            <tbody id="timetableBody" class="divide-y divide-gray-100">
-                                <!-- Dynamic -->
-                            </tbody>
+                            <tbody id="timetableBody" class="divide-y divide-gray-100"></tbody>
                         </table>
                     </div>
                 </div>
@@ -541,14 +503,11 @@
                             <h4 class="font-semibold text-sm text-gray-700">Award Badge / Certificate</h4>
                             <select id="certStudentSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm"></select>
                             <input type="text" id="certTitle" placeholder="Badge Title e.g. Star Qaida Reciter" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                            <input type="text" id="certImageURL" placeholder="Certificate Image URL / Cloud Link" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                             <button onclick="saveStudentBadge()" class="bg-brandBlue text-white px-4 py-2 rounded-lg text-sm font-medium w-full">Issue Badge</button>
                         </div>
                         <div class="border border-gray-200 rounded-lg p-4">
                             <h4 class="font-semibold text-sm text-gray-700 mb-2">Issued Achievements List</h4>
-                            <div id="badgesList" class="space-y-2 max-h-48 overflow-y-auto text-xs text-gray-600">
-                                <!-- Populated dynamically -->
-                            </div>
+                            <div id="badgesList" class="space-y-2 max-h-48 overflow-y-auto text-xs text-gray-600"></div>
                         </div>
                     </div>
                 </div>
@@ -586,45 +545,97 @@
                         </div>
                     </div>
 
-                    <!-- Teacher Feedback Box -->
                     <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl">
                         <h4 class="font-bold text-brandNavy text-sm mb-1 flex items-center">
                             <i class="fa-solid fa-comment-dots text-brandBlue me-2"></i> Overall Remarks / استاد کا تاثر
                         </h4>
-                        <p id="parentTeacherFeedback" class="text-xs text-gray-700 italic">Excellent progress in Tajweed rules. Consistently punctual in online classes.</p>
+                        <p id="parentTeacherFeedback" class="text-xs text-gray-700 italic">Excellent progress in Tajweed rules.</p>
                     </div>
                 </div>
 
-                <!-- Parent Attendance & Quran Tab (FIX 1 Item 3 + FIX 2 Item 6: Header contains Time and Photo) -->
+                <!-- Parent Attendance & Quran Tab -->
                 <div id="ptab-attendance-content" class="parent-tab-content space-y-4 hidden">
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
                         <h4 class="font-bold text-brandNavy">Detailed Attendance & Sabak Log</h4>
                         <div class="overflow-x-auto">
+                            <!-- EXACT COLUMNS ORDER: DATE | STATUS | QURAN LESSON PROGRESS | COURSE | QUALITY | TIME | PHOTOS | REMARKS -->
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 uppercase text-gray-500 font-semibold">
                                     <tr>
                                         <th class="p-2">Date</th>
                                         <th class="p-2">Status</th>
                                         <th class="p-2">Quran Lesson Progress</th>
+                                        <th class="p-2">Course</th>
                                         <th class="p-2">Quality</th>
                                         <th class="p-2">Time</th>
-                                        <th class="p-2">Photo</th>
+                                        <th class="p-2">Photos</th>
                                         <th class="p-2">Remarks</th>
                                     </tr>
                                 </thead>
-                                <tbody id="parentAttendanceTable" class="divide-y divide-gray-100">
-                                </tbody>
+                                <tbody id="parentAttendanceTable" class="divide-y divide-gray-100"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Parent Fees Tab (view-only) -->
+                <!-- Parent Courses Tab (BEFORE FEE STATUS) -->
+                <div id="ptab-courses-content" class="parent-tab-content space-y-4 hidden">
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <div>
+                                <span class="text-xs font-semibold text-brandBlue uppercase tracking-wider">Enrolled Course</span>
+                                <h3 id="parentCourseTitle" class="text-xl font-bold text-brandNavy mt-0.5">Revision Quran</h3>
+                            </div>
+                            <span id="parentCourseBadge" class="bg-blue-100 text-brandBlue font-semibold text-xs px-3 py-1 rounded-full">
+                                Active Student
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-700 pt-1">
+                            <div>
+                                <span class="font-semibold text-gray-500 block mb-1">Course Description & Schedule:</span>
+                                <p id="parentCourseDesc" class="bg-slate-50 p-3 rounded-lg border border-gray-100 leading-relaxed text-gray-800">
+                                    Class schedule 13 mints --- Lesson / 5 mints -- previous -- Lesson / Book + Namaz /
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <div>
+                                    <span class="font-semibold text-gray-500 block">Assigned Teacher:</span>
+                                    <p id="parentCourseTeacher" class="font-medium text-brandNavy text-sm">Ikhlas International Academy Teacher</p>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-gray-500 block">Total Lessons Recorded:</span>
+                                    <p id="parentCourseLessonsCount" class="font-bold text-gray-800">0 Lessons</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                        <h4 class="font-bold text-brandNavy text-sm flex items-center">
+                            <i class="fa-solid fa-list-check text-brandBlue me-2"></i> Date-Wise Course Learning History
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 uppercase text-gray-500 font-semibold border-b">
+                                    <tr>
+                                        <th class="p-2.5">Date</th>
+                                        <th class="p-2.5">Course Taught</th>
+                                        <th class="p-2.5">Lesson / Topic Progress</th>
+                                        <th class="p-2.5">Quality</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="parentCourseHistoryTable" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parent Fees Tab -->
                 <div id="ptab-fees-content" class="parent-tab-content space-y-4 hidden">
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
                         <h4 class="font-bold text-brandNavy">Fee Status</h4>
-                        <div id="parentFeeList" class="space-y-2">
-                        </div>
+                        <div id="parentFeeList" class="space-y-2"></div>
                     </div>
                 </div>
             </div>
@@ -677,35 +688,30 @@
         </div>
     </div>
 
-    <!-- Student Detail: Today's Lesson Images Modal (FIX 2 item 7: Kept intact) -->
-    <div id="lessonImagesModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-xl max-w-2xl w-full p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-2">
-                <div>
-                    <h3 class="font-bold text-brandNavy" id="liStudentName">Student</h3>
-                    <p class="text-[10px] text-gray-400" id="liStudentInfo"></p>
-                </div>
-                <button onclick="closeModal('lessonImagesModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="space-y-2 text-sm">
-                <label class="block text-xs font-semibold text-gray-600">Today's Lesson Images (screenshots of what was taught today)</label>
-                <input type="file" id="liFileInput" accept="image/*" multiple class="w-full border border-gray-300 rounded-lg p-2 text-xs">
-                <div class="flex items-center justify-between">
-                    <span id="liUploadStatus" class="text-xs text-gray-500"></span>
-                    <button id="liUploadBtn" onclick="uploadLessonImages()" class="px-4 py-1.5 rounded-lg bg-brandBlue text-white font-medium text-xs disabled:opacity-50">
-                        <i class="fa-solid fa-upload me-1"></i> Upload for Today
+    <!-- Image Lightbox Modal with NEXT / PREV / DELETE Controls -->
+    <div id="photoLightboxModal" class="fixed inset-0 img-modal-overlay z-50 flex flex-col items-center justify-center p-4 hidden" onclick="closeModal('photoLightboxModal')">
+        <div class="relative bg-black/90 p-3 rounded-2xl max-w-3xl w-full flex flex-col items-center justify-center shadow-2xl border border-gray-800" onclick="event.stopPropagation()">
+            <div class="w-full flex justify-between items-center px-2 pb-2 text-white text-xs border-b border-gray-800">
+                <span id="lightboxCounter" class="font-mono text-gray-400">Photo 1 of 1</span>
+                <div class="flex items-center space-x-2">
+                    <button id="lightboxDeleteBtn" onclick="deleteCurrentLightboxPhoto()" class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded-md font-semibold text-xs transition flex items-center gap-1">
+                        <i class="fa-solid fa-trash"></i> Delete Photo
+                    </button>
+                    <button onclick="closeModal('photoLightboxModal')" class="bg-gray-800 text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-gray-700">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
             </div>
-            <div id="liImagesList" class="space-y-4 border-t pt-3"></div>
-        </div>
-    </div>
 
-    <!-- Image Lightbox Modal for Photo Thumbnails -->
-    <div id="photoLightboxModal" class="fixed inset-0 img-modal-overlay z-50 flex items-center justify-center p-4 hidden" onclick="closeModal('photoLightboxModal')">
-        <div class="relative bg-white p-2 rounded-xl max-w-xl w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
-            <button onclick="closeModal('photoLightboxModal')" class="absolute top-3 right-3 bg-gray-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow"><i class="fa-solid fa-xmark"></i></button>
-            <img id="lightboxImg" src="" alt="Attendance Photo" class="w-full max-h-[80vh] object-contain rounded-lg">
+            <div class="relative w-full flex items-center justify-center py-4 my-2">
+                <button onclick="navigateLightbox(-1)" class="absolute left-2 z-10 bg-white/20 hover:bg-white/40 text-white rounded-full p-3 transition shadow">
+                    <i class="fa-solid fa-chevron-left text-lg"></i>
+                </button>
+                <img id="lightboxImg" src="" alt="Lesson Photo" class="max-h-[75vh] max-w-full object-contain rounded-lg shadow-lg">
+                <button onclick="navigateLightbox(1)" class="absolute right-2 z-10 bg-white/20 hover:bg-white/40 text-white rounded-full p-3 transition shadow">
+                    <i class="fa-solid fa-chevron-right text-lg"></i>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -841,7 +847,7 @@
                     <input type="text" id="mClassSubject" placeholder="e.g. Tajweed & Hifz" class="w-full border border-gray-300 rounded-lg p-2">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Live Link (Teams / Google Meet)</label>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Live Link</label>
                     <input type="text" id="mClassLink" placeholder="https://meet.google.com/..." class="w-full border border-gray-300 rounded-lg p-2">
                 </div>
             </div>
@@ -855,7 +861,6 @@
     <div id="receiptModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div id="printableReceiptArea" class="space-y-4 border p-4 rounded-lg">
-                <!-- Printable Header -->
                 <div class="flex items-center justify-between border-b pb-3">
                     <div class="flex items-center space-x-2">
                         <img src="logo.png" style="height:36px;" onerror="this.style.display='none';">
@@ -875,9 +880,6 @@
                         <span>Total Paid Amount:</span> <span id="rAmount">PKR 0</span>
                     </div>
                 </div>
-                <div class="border-t pt-2 text-center text-[10px] text-gray-400">
-                    Thank you for choosing Ikhlas International Academy. | ikhlasinternationalacademy.com
-                </div>
             </div>
             <div class="flex justify-end space-x-2">
                 <button onclick="closeModal('receiptModal')" class="px-4 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 text-xs">Close</button>
@@ -893,7 +895,7 @@
     <script>
         /* 
          * ======================================================================================
-         * 1. FIREBASE CONFIGURATION & FALLBACK
+         * 1. FIREBASE INITIALIZATION (EXCLUSIVELY FIRESTORE - NO LOCALSTORAGE)
          * ======================================================================================
          */
         const firebaseConfig = {
@@ -906,32 +908,29 @@
             measurementId: "G-4MCCXGZYEE"
         };
 
-        let db = null;
-        let storage = null;
-        let isFirebaseAvailable = false;
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        try {
-            if (firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.firestore();
-                storage = firebase.storage();
-                isFirebaseAvailable = true;
-                const statusEl = document.getElementById('syncStatus');
-                if(statusEl) {
-                    statusEl.innerText = "Ready";
-                    statusEl.className = "ml-1 font-semibold text-green-400";
-                }
-            }
-        } catch (e) {
-            console.warn("Firebase fallback mode.", e);
-        }
+        /* Global Memory Caches (Populated ONLY from Firestore) */
+        let appStudents = [];
+        let appAttendance = [];
+        let appAcademics = {};
+        let appFees = [];
+        let appHomework = [];
+        let appAnnouncements = [];
+        let appTimetable = [];
+        let appBadges = [];
+        let appCourses = [];
+        let editingCourseId = null;
 
-        /* 
-         * ======================================================================================
-         * 2. DEMO INITIAL SEED & STORE DATA
-         * ======================================================================================
-         */
         const todayStr = new Date().toISOString().split('T')[0];
+
+        const DEFAULT_COURSES = [
+            { id: "default-course-1", title: "Revision Quran", description: "Class schedule 13 mints --- Lesson / 5 mints -- previous -- Lesson / Book + Namaz /", order: 1 },
+            { id: "default-course-2", title: "Hifz Course", description: "Quran Para 30 se parh rahe hain", order: 2 },
+            { id: "default-course-3", title: "Basic Course", description: "Fundamental Islamic Studies, Duas, and basic Qaida.", order: 3 },
+            { id: "default-course-4", title: "Nazrah Course", description: "Quran recitation with basic Tajweed rules.", order: 4 }
+        ];
 
         const DEFAULT_STUDENTS = [
             { id: "AYAT-101", parentId: "P-10", name: "Ayat Khan", fatherName: "Tariq Khan", class: "Hifz", whatsapp: "+92 317 0237447", parentName: "Tariq Khan" },
@@ -939,352 +938,14 @@
             { id: "HAMZA-103", parentId: "P-12", name: "Hamza Ahmed", fatherName: "Zubair Ahmed", class: "Qaida", whatsapp: "+92 321 9876543", parentName: "Zubair Ahmed" }
         ];
 
-        const DEFAULT_ATTENDANCE = [
-            { date: todayStr, studentId: "AYAT-101", status: "Present", quality: "Excellent", lesson: "Surah Al-Baqarah 1-20", timeIn: "4:00 PM", timeOut: "5:00 PM", remarks: "MashaAllah perfect recitation", photo: "https://placehold.co/300x300/0A1F44/FFFFFF?text=Quran+Lesson" },
-            { date: todayStr, studentId: "ZAYN-102", status: "Present", quality: "Good", lesson: "Para 5 Revision", timeIn: "5:00 PM", timeOut: "6:00 PM", remarks: "Revise Tajweed rules", photo: "" },
-            { date: todayStr, studentId: "HAMZA-103", status: "Late", quality: "Good", lesson: "Norani Qaida Page 12", timeIn: "6:15 PM", timeOut: "7:00 PM", remarks: "Arrived 15 mins late", photo: "" }
-        ];
-
-        const DEFAULT_DATA = {
-            students: DEFAULT_STUDENTS,
-            attendance: DEFAULT_ATTENDANCE,
-            academics: {
-                "AYAT-101": { progress: 85, testScore: "95/100", feedback: "Excellent progress in Tajweed rules." },
-                "ZAYN-102": { progress: 70, testScore: "82/100", feedback: "Needs a bit more practice on Makharij." },
-                "HAMZA-103": { progress: 60, testScore: "75/100", feedback: "Good effort in Qaida lesson." }
-            },
-            fees: [
-                { id: "F-1001", studentId: "AYAT-101", month: todayStr.substring(0, 7), amount: 3500, status: "Paid", method: "JazzCash" },
-                { id: "F-1002", studentId: "ZAYN-102", month: todayStr.substring(0, 7), amount: 3000, status: "Paid", method: "EasyPaisa" },
-                { id: "F-1003", studentId: "HAMZA-103", month: todayStr.substring(0, 7), amount: 3000, status: "Unpaid", method: "Bank Transfer" }
-            ],
-            homework: [
-                { id: "HW-1", title: "Surah Al-Mulk Revision", dueDate: todayStr, link: "https://ikhlasinternationalacademy.com" }
-            ],
-            announcements: [
-                { id: "A-1", title: "Monthly Tajweed Evaluation", type: "Event", msg: "Oral test next Monday for all Hifz & Nazra students.", date: todayStr }
-            ],
-            timetable: [
-                { day: "Monday", time: "04:00 PM - 05:00 PM", subject: "Hifz & Tajweed", link: "https://meet.google.com", video: "" },
-                { day: "Tuesday", time: "05:00 PM - 06:00 PM", subject: "Nazra Quran", link: "https://meet.google.com", video: "" }
-            ],
-            inquiries: [],
-            badges: [
-                { studentId: "AYAT-101", title: "Star Hifz Reciter", url: "", date: todayStr }
-            ],
-            courses: []
-        };
-
-        const DEFAULT_COURSES = [
-            {
-                id: "default-course-1",
-                title: "Revision Quran",
-                description: "Class schedule 13 mints --- Lesson / 5 mints -- previous -- Lesson / Book + Namaz /",
-                order: 1
-            },
-            {
-                id: "default-course-2",
-                title: "Hifz Course",
-                description: "Quran Para 30 se parh rahe hain",
-                order: 2
-            },
-            {
-                id: "default-course-3",
-                title: "Basic Course",
-                description: "",
-                order: 3
-            },
-            {
-                id: "default-course-4",
-                title: "Nazrah Course",
-                description: "",
-                order: 4
-            }
-        ];
-
-        function getStoreData(key) {
-            try {
-                const raw = localStorage.getItem('ikhlas_' + key);
-                return raw ? JSON.parse(raw) : (DEFAULT_DATA[key] || []);
-            } catch (err) {
-                return DEFAULT_DATA[key] || [];
-            }
-        }
-
-        function setStoreData(key, value) {
-            try {
-                localStorage.setItem('ikhlas_' + key, JSON.stringify(value));
-            } catch (err) { }
-        }
-
-        let appStudents = getStoreData('students');
-        if (appStudents.length === 0) appStudents = DEFAULT_STUDENTS;
-        let appAttendance = getStoreData('attendance');
-        if (appAttendance.length === 0) appAttendance = DEFAULT_ATTENDANCE;
-        let appAcademics = getStoreData('academics');
-        let appFees = getStoreData('fees');
-        let appHomework = getStoreData('homework');
-        let appAnnouncements = getStoreData('announcements');
-        let appTimetable = getStoreData('timetable');
-        let appInquiries = getStoreData('inquiries');
-        let appBadges = getStoreData('badges');
-        let appCourses = getStoreData('courses');
-        let appLessonImages = getStoreData('lessonImages');
-        let editingCourseId = null;
-
         /* 
          * ======================================================================================
-         * 3. INITIALIZATION & ROUTING
+         * 2. REAL CLOUDINARY UPLOAD ENGINE (CANVAS COMPRESSION + MULTI-PHOTO UNUNSIGNED)
          * ======================================================================================
          */
-        let currentParentViewStudentId = "AYAT-101";
-
-        function initializeView() {
-            const dateInput = document.getElementById('attendanceDatePicker');
-            if(dateInput) dateInput.value = todayStr;
-
-            const monthInput = document.getElementById('reportMonthPicker');
-            if(monthInput) monthInput.value = todayStr.substring(0, 7);
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const studentParam = urlParams.get('student');
-            const isParentMode = urlParams.has('student') || urlParams.has('parent');
-
-            if (isParentMode) {
-                document.documentElement.classList.add('parent-mode');
-                loadParentPortalData(studentParam || appStudents[0]?.id || "AYAT-101");
-                syncParentCloudData(studentParam || appStudents[0]?.id || "AYAT-101");
-            } else {
-                renderStudentsTable();
-                renderDashboard();
-                populateDropdowns();
-                loadAttendanceForDate();
-                loadStudentsAndAttendanceFromFirestore();
-                loadCoursesFromFirestore();
-            }
-
-            renderAnalyticsChart();
-        }
-
-        async function loadStudentsAndAttendanceFromFirestore() {
-            if (!(isFirebaseAvailable && db)) return;
-            try {
-                const [stSnap, attSnap, feeSnap, hwSnap, acadSnap] = await Promise.all([
-                    db.collection('students').get(),
-                    db.collection('attendance').get(),
-                    db.collection('fees').get(),
-                    db.collection('homework').get(),
-                    db.collection('academics').get()
-                ]);
-
-                if (!stSnap.empty) {
-                    appStudents = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-                    setStoreData('students', appStudents);
-                } else if (appStudents.length > 0) {
-                    const batch = db.batch();
-                    appStudents.forEach(st => {
-                        batch.set(db.collection('students').doc(st.id), st, { merge: true });
-                    });
-                    await batch.commit();
-                }
-
-                if (!attSnap.empty) {
-                    appAttendance = attSnap.docs.map(d => d.data());
-                    setStoreData('attendance', appAttendance);
-                } else if (appAttendance.length > 0) {
-                    const batch = db.batch();
-                    appAttendance.forEach(rec => {
-                        const docId = `${rec.date}_${rec.studentId}`;
-                        batch.set(db.collection('attendance').doc(docId), rec, { merge: true });
-                    });
-                    await batch.commit();
-                }
-
-                if (!feeSnap.empty) {
-                    appFees = feeSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-                    setStoreData('fees', appFees);
-                } else if (appFees.length > 0) {
-                    const batch = db.batch();
-                    appFees.forEach(fee => {
-                        batch.set(db.collection('fees').doc(fee.id), fee, { merge: true });
-                    });
-                    await batch.commit();
-                }
-
-                if (!hwSnap.empty) {
-                    appHomework = hwSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-                    setStoreData('homework', appHomework);
-                } else if (appHomework.length > 0) {
-                    const batch = db.batch();
-                    appHomework.forEach(hw => {
-                        batch.set(db.collection('homework').doc(hw.id), hw, { merge: true });
-                    });
-                    await batch.commit();
-                }
-
-                if (!acadSnap.empty) {
-                    const cloudAcad = {};
-                    acadSnap.docs.forEach(d => {
-                        cloudAcad[d.id] = d.data();
-                    });
-                    appAcademics = cloudAcad;
-                    setStoreData('academics', appAcademics);
-                } else if (appAcademics && Object.keys(appAcademics).length > 0) {
-                    const batch = db.batch();
-                    Object.entries(appAcademics).forEach(([stId, data]) => {
-                        batch.set(db.collection('academics').doc(stId), data, { merge: true });
-                    });
-                    await batch.commit();
-                }
-
-                renderStudentsTable();
-                populateDropdowns();
-                loadAttendanceForDate();
-                renderFeeTable();
-                renderHomeworkCards();
-                renderDashboard();
-            } catch (err) {
-                console.warn("Could not sync students/attendance/fees/homework/academics from Firestore, using local backup:", err);
-            }
-        }
-
-        /* 
-         * ======================================================================================
-         * 4. TEACHER UI SWITCHING
-         * ======================================================================================
-         */
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('sidebar-active');
-                btn.classList.add('text-gray-700', 'hover:bg-slate-100');
-            });
-
-            document.getElementById('tab-' + tabId)?.classList.remove('hidden');
-            const activeBtn = document.getElementById('nav-' + tabId);
-            if(activeBtn) {
-                activeBtn.classList.add('sidebar-active');
-                activeBtn.classList.remove('text-gray-700', 'hover:bg-slate-100');
-            }
-
-            if(tabId === 'dashboard') renderDashboard();
-            if(tabId === 'students') renderStudentsTable();
-            if(tabId === 'attendance') {
-                loadAttendanceForDate();
-                loadCoursesFromFirestore();
-            }
-            if(tabId === 'fees') renderFeeTable();
-            if(tabId === 'homework') renderHomeworkCards();
-            if(tabId === 'announcements') renderAnnouncementsList();
-            if(tabId === 'classes') renderTimetable();
-            if(tabId === 'reports') renderBadgesList();
-        }
-
-        function togglePortalModePreview() {
-            const isParent = document.documentElement.classList.toggle('parent-mode');
-            if (isParent) {
-                const targetId = appStudents[0]?.id || "AYAT-101";
-                loadParentPortalData(targetId);
-                syncParentCloudData(targetId);
-            } else {
-                switchTab('dashboard');
-            }
-        }
-
-        /* 
-         * ======================================================================================
-         * 5. STUDENT DIRECTORY & LESSON IMAGES
-         * ======================================================================================
-         */
-        function escapeHtml(str) {
-            return String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        }
-
-        function renderStudentsTable() {
-            const tbody = document.getElementById('studentsTableBody');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-
-            appStudents.forEach(st => {
-                const parentLink = `${window.location.origin}${window.location.pathname}?student=${encodeURIComponent(st.id)}`;
-                const waText = encodeURIComponent(`Assalam-o-Alaikum, Ye ${st.name} ka Parent Portal link hai. Is me attendance, lesson, fees aur report dekh sakte hain. Link: ${parentLink} - Ikhlas International Academy`);
-                const waUrl = `https://wa.me/${st.whatsapp.replace(/[^0-9]/g, '')}?text=${waText}`;
-
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition";
-                tr.innerHTML = `
-                    <td class="p-3 font-medium text-brandNavy">${escapeHtml(st.name)} <br/><span class="text-[10px] text-gray-400">ID: ${escapeHtml(st.id)}</span></td>
-                    <td class="p-3">${escapeHtml(st.fatherName)}</td>
-                    <td class="p-3"><span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-brandBlue">${escapeHtml(st.class)}</span></td>
-                    <td class="p-3">${escapeHtml(st.parentName)} <br/><span class="text-xs text-gray-500">${escapeHtml(st.whatsapp)}</span></td>
-                    <td class="p-3 text-center space-x-1 whitespace-nowrap">
-                        <button onclick="copyToClipboard('${parentLink}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">
-                            <i class="fa-solid fa-copy me-1"></i> Copy Link
-                        </button>
-                        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
-                            <i class="fa-brands fa-whatsapp me-1"></i> Share WhatsApp
-                        </a>
-                        <button onclick="openLessonImages('${st.id}')" class="bg-brandBlue hover:bg-blue-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
-                            <i class="fa-solid fa-images me-1"></i> Lesson Images
-                        </button>
-                        <button onclick="deleteStudent('${st.id}')" class="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
-                            <i class="fa-solid fa-trash me-1"></i> Delete
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function createNewStudent() {
-            const name = document.getElementById('mStudentName').value.trim();
-            const fatherName = document.getElementById('mFatherName').value.trim();
-            const cls = document.getElementById('mStudentClass').value;
-            const wa = document.getElementById('mWhatsApp').value.trim();
-            const parentName = document.getElementById('mParentName').value.trim();
-
-            if (!name || !fatherName) {
-                alert("Please fill in Student and Father name.");
-                return;
-            }
-
-            const newId = name.toUpperCase().replace(/\s+/g, '') + '-' + Math.floor(100 + Math.random() * 900);
-            const newStudent = { id: newId, parentId: 'P-' + Math.floor(10 + Math.random() * 90), name, fatherName, class: cls, whatsapp: wa || "+92 300 0000000", parentName: parentName || fatherName };
-            appStudents.push(newStudent);
-            setStoreData('students', appStudents);
-
-            if (isFirebaseAvailable && db) {
-                db.collection('students').doc(newId).set(newStudent).catch(err => console.error("Error saving student to Firestore:", err));
-            }
-
-            closeModal('addStudentModal');
-            renderStudentsTable();
-            populateDropdowns();
-            renderDashboard();
-        }
-
-        function deleteStudent(studentId) {
-            if (confirm("Are you sure? This student will be deleted permanently.")) {
-                if (isFirebaseAvailable && db) {
-                    db.collection('students').doc(studentId).delete().catch(err => console.error("Error deleting student from Firestore:", err));
-                }
-                appStudents = appStudents.filter(s => s.id !== studentId);
-                setStoreData('students', appStudents);
-                renderStudentsTable();
-                populateDropdowns();
-                renderDashboard();
-            }
-        }
-
-        /* FIX 2: Real Cloudinary Upload + Lesson Images Management */
         const CLOUDINARY_CLOUD_NAME = "sietck7o";
         const CLOUDINARY_UPLOAD_PRESET = "lms_lessons";
         const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
-
-        function localDateStr() {
-            const d = new Date();
-            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-        }
 
         function compressImageToJpg(file, maxWidth = 1000, quality = 0.7) {
             return new Promise((resolve, reject) => {
@@ -1310,7 +971,7 @@
                 };
                 img.onerror = () => {
                     URL.revokeObjectURL(objUrl);
-                    reject(new Error("Could not read image"));
+                    reject(new Error("Could not read image file"));
                 };
                 img.src = objUrl;
             });
@@ -1332,170 +993,261 @@
             return data.secure_url;
         }
 
-        let lessonImagesStudentId = null;
+        /* 
+         * ======================================================================================
+         * 3. INITIALIZATION & FIRESTORE FETCH (NO LOCALSTORAGE)
+         * ======================================================================================
+         */
+        let currentParentViewStudentId = "AYAT-101";
 
-        async function openLessonImages(studentId) {
-            const st = appStudents.find(s => s.id === studentId);
-            if (!st) return;
-            lessonImagesStudentId = studentId;
-            document.getElementById('liStudentName').innerText = st.name;
-            document.getElementById('liStudentInfo').innerText = `ID: ${st.id} | Class: ${st.class}`;
-            document.getElementById('liFileInput').value = '';
-            document.getElementById('liUploadStatus').innerText = '';
-            openModal('lessonImagesModal');
-            await renderLessonImages();
+        async function initializeView() {
+            const dateInput = document.getElementById('attendanceDatePicker');
+            if(dateInput) dateInput.value = todayStr;
+
+            const monthInput = document.getElementById('reportMonthPicker');
+            if(monthInput) monthInput.value = todayStr.substring(0, 7);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const studentParam = urlParams.get('student');
+            const isParentMode = urlParams.has('student') || urlParams.has('parent');
+
+            await fetchAllDataFromFirestore();
+
+            if (isParentMode) {
+                document.documentElement.classList.add('parent-mode');
+                loadParentPortalData(studentParam || appStudents[0]?.id || "AYAT-101");
+            } else {
+                renderStudentsTable();
+                renderDashboard();
+                populateDropdowns();
+                loadAttendanceForDate();
+                renderCoursesList();
+            }
+
+            renderAnalyticsChart();
         }
 
-        async function renderLessonImages() {
-            const container = document.getElementById('liImagesList');
-            const studentId = lessonImagesStudentId;
-            if (!container || !studentId) return;
-
-            const today = localDateStr();
-            container.innerHTML = '<p class="text-xs text-gray-400">Loading today\'s lesson images...</p>';
-
-            if (isFirebaseAvailable && db) {
-                try {
-                    const snap = await db.collection('lessonImages').where('studentId', '==', studentId).get();
-                    if (studentId !== lessonImagesStudentId) return;
-                    const cloudImgs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-                    const otherStudentsImgs = appLessonImages.filter(img => img.studentId !== studentId);
-                    appLessonImages = [...otherStudentsImgs, ...cloudImgs];
-                    setStoreData('lessonImages', appLessonImages);
-                } catch (err) {
-                    console.warn("Could not load lesson images from Firestore, using local backup:", err);
-                }
-            }
-
-            const todaysImgs = appLessonImages
-                .filter(img => img.studentId === studentId && img.date === today)
-                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-            if (todaysImgs.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-400">No lesson images uploaded for today (${escapeHtml(today)}).</p>`;
-                return;
-            }
-
-            container.innerHTML = `<h4 class="text-xs font-bold text-brandNavy border-b pb-1"><i class="fa-solid fa-calendar-day me-1"></i> Today (${escapeHtml(today)})</h4>`;
-            const grid = document.createElement('div');
-            grid.className = "grid grid-cols-2 sm:grid-cols-3 gap-2";
-
-            todaysImgs.forEach(img => {
-                const imgUrl = img.imageUrl || img.secure_url || '';
-                const card = document.createElement('div');
-                card.className = "border rounded-lg overflow-hidden bg-slate-50 flex flex-col";
-                card.innerHTML = `
-                    <a href="${escapeHtml(imgUrl)}" target="_blank" rel="noopener noreferrer">
-                        <img src="${escapeHtml(imgUrl)}" alt="Lesson image" class="w-full h-28 object-cover">
-                    </a>
-                    <div class="px-2 py-1 text-[10px] text-gray-500 flex justify-between items-center bg-white border-t">
-                        <span>${escapeHtml(img.date)}</span>
-                        <button type="button" onclick="deleteLessonImage('${escapeHtml(img.id)}')" class="text-red-600 hover:underline font-semibold">
-                            <i class="fa-solid fa-trash me-0.5"></i> Delete
-                        </button>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-
-            container.appendChild(grid);
-        }
-
-        async function uploadLessonImages() {
-            const studentId = lessonImagesStudentId;
-            const fileInput = document.getElementById('liFileInput');
-            const files = Array.from(fileInput.files || []);
-            const status = document.getElementById('liUploadStatus');
-            const btn = document.getElementById('liUploadBtn');
-
-            if (!studentId) return;
-            if (files.length === 0) {
-                alert("Please select one or more images.");
-                return;
-            }
-
-            const date = localDateStr();
-            btn.disabled = true;
-            let done = 0;
-            let failed = 0;
-
-            for (const file of files) {
-                if (!file.type.startsWith('image/')) {
-                    failed++;
-                    continue;
-                }
-                const label = `Image ${done + failed + 1} of ${files.length}`;
-                try {
-                    status.innerText = `${label}: compressing...`;
-                    const blob = await compressImageToJpg(file, 1000, 0.7);
-                    status.innerText = `${label}: uploading to Cloudinary...`;
-                    const secure_url = await uploadToCloudinary(blob);
-
-                    const docId = 'li-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-                    const record = {
-                        id: docId,
-                        studentId,
-                        date,
-                        imageUrl: secure_url,
-                        createdAt: Date.now()
-                    };
-
-                    if (isFirebaseAvailable && db) {
-                        await db.collection('lessonImages').doc(docId).set(record);
-                    }
-
-                    appLessonImages.push(record);
-                    setStoreData('lessonImages', appLessonImages);
-                    done++;
-                } catch (err) {
-                    console.error("Error uploading lesson image:", err);
-                    failed++;
-                }
-            }
-
-            btn.disabled = false;
-            fileInput.value = '';
-            status.innerText = `${done} image(s) uploaded` + (failed ? `, ${failed} failed.` : '.');
-            if (studentId === lessonImagesStudentId) {
-                await renderLessonImages();
-            }
-        }
-
-        async function deleteLessonImage(docId) {
-            if (!confirm("Delete this lesson image?")) return;
+        async function fetchAllDataFromFirestore() {
             try {
-                if (isFirebaseAvailable && db) {
-                    await db.collection('lessonImages').doc(docId).delete();
+                // 1. Courses
+                const crsSnap = await db.collection('courses').get();
+                if (crsSnap.empty) {
+                    const batch = db.batch();
+                    DEFAULT_COURSES.forEach(course => {
+                        batch.set(db.collection('courses').doc(course.id), {
+                            title: course.title,
+                            description: course.description,
+                            order: course.order,
+                            createdAt: Date.now() + course.order
+                        });
+                    });
+                    await batch.commit();
+                    appCourses = [...DEFAULT_COURSES];
+                } else {
+                    appCourses = crsSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+                    appCourses.sort((a, b) => (a.order || 0) - (b.order || 0));
                 }
+
+                // 2. Students
+                const stSnap = await db.collection('students').get();
+                if (stSnap.empty) {
+                    const batch = db.batch();
+                    DEFAULT_STUDENTS.forEach(st => {
+                        batch.set(db.collection('students').doc(st.id), st);
+                    });
+                    await batch.commit();
+                    appStudents = [...DEFAULT_STUDENTS];
+                } else {
+                    appStudents = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+                }
+
+                // 3. Attendance
+                const attSnap = await db.collection('attendance').get();
+                appAttendance = attSnap.empty ? [] : attSnap.docs.map(d => d.data());
+
+                // 4. Fees
+                const feeSnap = await db.collection('fees').get();
+                appFees = feeSnap.empty ? [] : feeSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+
+                // 5. Homework
+                const hwSnap = await db.collection('homework').get();
+                appHomework = hwSnap.empty ? [] : hwSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+
+                // 6. Academics
+                const acadSnap = await db.collection('academics').get();
+                appAcademics = {};
+                acadSnap.docs.forEach(d => { appAcademics[d.id] = d.data(); });
+
+                // 7. Announcements
+                const ancSnap = await db.collection('announcements').get();
+                appAnnouncements = ancSnap.empty ? [] : ancSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+
+                // 8. Timetable
+                const ttSnap = await db.collection('timetable').get();
+                appTimetable = ttSnap.empty ? [] : ttSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+
+                // 9. Badges
+                const bdgSnap = await db.collection('badges').get();
+                appBadges = bdgSnap.empty ? [] : bdgSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+
             } catch (err) {
-                console.error("Error deleting lesson image from Firestore:", err);
+                console.error("Firestore sync error:", err);
             }
-            appLessonImages = appLessonImages.filter(img => img.id !== docId);
-            setStoreData('lessonImages', appLessonImages);
-            await renderLessonImages();
         }
 
         /* 
          * ======================================================================================
-         * 6. DAILY ATTENDANCE & REPORT LOG (FIX 1 & FIX 2 IMPLEMENTATION)
+         * 4. TEACHER NAVIGATION
          * ======================================================================================
          */
-        
-        /* FIX 2 ITEM 4: In Teacher Panel attendance table, add photo input & show existing photo */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('sidebar-active');
+                btn.classList.add('text-gray-700', 'hover:bg-slate-100');
+            });
+
+            document.getElementById('tab-' + tabId)?.classList.remove('hidden');
+            const activeBtn = document.getElementById('nav-' + tabId);
+            if(activeBtn) {
+                activeBtn.classList.add('sidebar-active');
+                activeBtn.classList.remove('text-gray-700', 'hover:bg-slate-100');
+            }
+
+            if(tabId === 'dashboard') renderDashboard();
+            if(tabId === 'students') renderStudentsTable();
+            if(tabId === 'attendance') loadAttendanceForDate();
+            if(tabId === 'fees') renderFeeTable();
+            if(tabId === 'homework') renderHomeworkCards();
+            if(tabId === 'announcements') renderAnnouncementsList();
+            if(tabId === 'classes') renderTimetable();
+            if(tabId === 'reports') renderBadgesList();
+        }
+
+        function togglePortalModePreview() {
+            const isParent = document.documentElement.classList.toggle('parent-mode');
+            if (isParent) {
+                loadParentPortalData(appStudents[0]?.id || "AYAT-101");
+            } else {
+                switchTab('dashboard');
+            }
+        }
+
+        /* 
+         * ======================================================================================
+         * 5. STUDENT DIRECTORY (FIRESTORE ONLY)
+         * ======================================================================================
+         */
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function renderStudentsTable() {
+            const tbody = document.getElementById('studentsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            appStudents.forEach(st => {
+                const parentLink = `${window.location.origin}${window.location.pathname}?student=${encodeURIComponent(st.id)}`;
+                const waText = encodeURIComponent(`Assalam-o-Alaikum, Ye ${st.name} ka Parent Portal link hai: ${parentLink}`);
+                const waUrl = `https://wa.me/${st.whatsapp.replace(/[^0-9]/g, '')}?text=${waText}`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-medium text-brandNavy">${escapeHtml(st.name)} <br/><span class="text-[10px] text-gray-400">ID: ${escapeHtml(st.id)}</span></td>
+                    <td class="p-3">${escapeHtml(st.fatherName)}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-brandBlue">${escapeHtml(st.class)}</span></td>
+                    <td class="p-3">${escapeHtml(st.parentName)} <br/><span class="text-xs text-gray-500">${escapeHtml(st.whatsapp)}</span></td>
+                    <td class="p-3 text-center space-x-1 whitespace-nowrap">
+                        <button onclick="copyToClipboard('${parentLink}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">
+                            <i class="fa-solid fa-copy me-1"></i> Copy Link
+                        </button>
+                        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
+                            <i class="fa-brands fa-whatsapp me-1"></i> Share WhatsApp
+                        </a>
+                        <button onclick="deleteStudent('${st.id}')" class="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium inline-block">
+                            <i class="fa-solid fa-trash me-1"></i> Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function createNewStudent() {
+            const name = document.getElementById('mStudentName').value.trim();
+            const fatherName = document.getElementById('mFatherName').value.trim();
+            const cls = document.getElementById('mStudentClass').value;
+            const wa = document.getElementById('mWhatsApp').value.trim();
+            const parentName = document.getElementById('mParentName').value.trim();
+
+            if (!name || !fatherName) {
+                alert("Please fill in Student and Father name.");
+                return;
+            }
+
+            const newId = name.toUpperCase().replace(/\s+/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+            const newStudent = { id: newId, parentId: 'P-' + Math.floor(10 + Math.random() * 90), name, fatherName, class: cls, whatsapp: wa || "+92 300 0000000", parentName: parentName || fatherName };
+            
+            await db.collection('students').doc(newId).set(newStudent);
+            appStudents.push(newStudent);
+
+            closeModal('addStudentModal');
+            renderStudentsTable();
+            populateDropdowns();
+            renderDashboard();
+        }
+
+        async function deleteStudent(studentId) {
+            if (confirm("Are you sure? This student will be deleted permanently.")) {
+                await db.collection('students').doc(studentId).delete();
+                appStudents = appStudents.filter(s => s.id !== studentId);
+                renderStudentsTable();
+                populateDropdowns();
+                renderDashboard();
+            }
+        }
+
+        /* 
+         * ======================================================================================
+         * 6. DAILY ATTENDANCE & MULTI-PHOTO HORIZONTAL LOG ENGINE
+         * ======================================================================================
+         */
         function loadAttendanceForDate() {
             const selectedDate = document.getElementById('attendanceDatePicker').value;
             const tbody = document.getElementById('attendanceMarkingBody');
             if (!tbody) return;
             tbody.innerHTML = '';
 
+            const coursesList = appCourses.length > 0 ? appCourses : DEFAULT_COURSES;
+
             appStudents.forEach(st => {
                 const existingLog = appAttendance.find(a => a.date === selectedDate && a.studentId === st.id) || {};
+                const photos = Array.isArray(existingLog.photos) ? existingLog.photos : (existingLog.photo ? [existingLog.photo] : []);
+                const selectedCourse = existingLog.courseTitle || (coursesList[0] ? coursesList[0].title : "Revision Quran");
+
+                let courseOptionsHtml = '';
+                coursesList.forEach(c => {
+                    const isSel = c.title === selectedCourse ? 'selected' : '';
+                    courseOptionsHtml += `<option value="${escapeHtml(c.title)}" ${isSel}>${escapeHtml(c.title)}</option>`;
+                });
+
+                let photosThumbnailsHtml = '';
+                photos.forEach((url, pIdx) => {
+                    photosThumbnailsHtml += `
+                        <div class="relative group shrink-0">
+                            <img src="${escapeHtml(url)}" class="w-10 h-10 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm hover:opacity-90" onclick="openPhotoLightboxGroup('${st.id}', '${selectedDate}', ${pIdx})">
+                            <button type="button" onclick="deleteSingleAttendancePhoto('${st.id}', '${selectedDate}', ${pIdx})" class="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center shadow opacity-80 hover:opacity-100">&times;</button>
+                        </div>
+                    `;
+                });
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-3 font-semibold text-gray-800" data-studentid="${st.id}">${escapeHtml(st.name)}</td>
                     <td class="p-3">
-                        <select class="att-status border rounded p-1 text-xs w-full">
+                        <select class="att-status border rounded p-1 text-xs w-full bg-white">
                             <option ${existingLog.status === 'Present' ? 'selected' : ''}>Present</option>
                             <option ${existingLog.status === 'Absent' ? 'selected' : ''}>Absent</option>
                             <option ${existingLog.status === 'Late' ? 'selected' : ''}>Late</option>
@@ -1504,30 +1256,38 @@
                         </select>
                     </td>
                     <td class="p-3">
-                        <select class="att-quality border rounded p-1 text-xs w-full">
+                        <select class="att-course border border-blue-200 rounded p-1 text-xs w-full bg-blue-50/50 font-medium">
+                            ${courseOptionsHtml}
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <select class="att-quality border rounded p-1 text-xs w-full bg-white">
                             <option ${existingLog.quality === 'Excellent' ? 'selected' : ''}>Excellent</option>
                             <option ${existingLog.quality === 'Good' ? 'selected' : ''}>Good</option>
                             <option ${existingLog.quality === 'Weak' ? 'selected' : ''}>Weak</option>
                         </select>
                     </td>
                     <td class="p-3">
-                        <input type="text" class="att-lesson border rounded p-1 text-xs w-full" placeholder="Surah / Sabak / Manzil" value="${escapeHtml(existingLog.lesson || '')}">
+                        <input type="text" class="att-lesson border rounded p-1 text-xs w-full" placeholder="Surah / Sabak" value="${escapeHtml(existingLog.lesson || '')}">
                     </td>
                     <td class="p-3 space-y-1">
-                        <input type="text" class="att-in border rounded p-1 text-[10px] w-full" placeholder="In (e.g 4PM)" value="${escapeHtml(existingLog.timeIn || '')}">
-                        <input type="text" class="att-out border rounded p-1 text-[10px] w-full" placeholder="Out (e.g 5PM)" value="${escapeHtml(existingLog.timeOut || '')}">
+                        <input type="text" class="att-in border rounded p-1 text-[10px] w-full" placeholder="In (4PM)" value="${escapeHtml(existingLog.timeIn || '')}">
+                        <input type="text" class="att-out border rounded p-1 text-[10px] w-full" placeholder="Out (5PM)" value="${escapeHtml(existingLog.timeOut || '')}">
                     </td>
-                    <td class="p-3 space-y-1">
+                    <td class="p-3 space-y-2">
                         <input type="text" class="att-remarks border rounded p-1 text-xs w-full" placeholder="Remarks..." value="${escapeHtml(existingLog.remarks || '')}">
-                        <input type="file" class="att-photo text-[10px] w-full" accept="image/*">
-                        ${existingLog.photo ? `<img src="${escapeHtml(existingLog.photo)}" alt="Saved Photo" class="w-10 h-10 object-cover rounded border cursor-pointer" onclick="openPhotoLightbox('${escapeHtml(existingLog.photo)}')">` : ''}
+                        <div class="flex items-center space-x-2">
+                            <input type="file" class="att-photos-input text-[10px] w-full border border-dashed p-1 rounded bg-gray-50" accept="image/*" multiple>
+                        </div>
+                        <div class="flex flex-row flex-wrap items-center gap-1.5 pt-1">
+                            ${photosThumbnailsHtml}
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        /* FIX 2 ITEM 5: ASYNC saveDailyAttendance with Cloudinary upload + Firestore sync */
         async function saveDailyAttendance() {
             const date = document.getElementById('attendanceDatePicker').value;
             const rows = document.querySelectorAll('#attendanceMarkingBody tr');
@@ -1535,56 +1295,129 @@
             for (const row of rows) {
                 const stId = row.querySelector('[data-studentid]').getAttribute('data-studentid');
                 const status = row.querySelector('.att-status').value;
+                const courseTitle = row.querySelector('.att-course').value;
                 const quality = row.querySelector('.att-quality').value;
                 const lesson = row.querySelector('.att-lesson').value;
                 const timeIn = row.querySelector('.att-in').value;
                 const timeOut = row.querySelector('.att-out').value;
                 const remarks = row.querySelector('.att-remarks').value;
-                const photoInput = row.querySelector('.att-photo');
+                const photosInput = row.querySelector('.att-photos-input');
 
                 const existingLog = appAttendance.find(a => a.date === date && a.studentId === stId) || {};
-                let photo = existingLog.photo || '';
+                let photosArray = Array.isArray(existingLog.photos) ? [...existingLog.photos] : (existingLog.photo ? [existingLog.photo] : []);
 
-                if (photoInput && photoInput.files && photoInput.files[0]) {
-                    try {
-                        const file = photoInput.files[0];
-                        const blob = await compressImageToJpg(file, 1000, 0.7);
-                        photo = await uploadToCloudinary(blob);
-                    } catch (err) {
-                        console.error("Photo upload error:", err);
+                if (photosInput && photosInput.files && photosInput.files.length > 0) {
+                    for (let i = 0; i < photosInput.files.length; i++) {
+                        const file = photosInput.files[i];
+                        try {
+                            const blob = await compressImageToJpg(file, 1000, 0.7);
+                            const secureUrl = await uploadToCloudinary(blob);
+                            photosArray.push(secureUrl);
+                        } catch (err) {
+                            console.error("Cloudinary upload failed for photo:", err);
+                        }
                     }
                 }
+
+                const docId = `${date}_${stId}`;
+                const newRec = { date, studentId: stId, status, courseTitle, quality, lesson, timeIn, timeOut, remarks, photos: photosArray };
+                
+                await db.collection('attendance').doc(docId).set(newRec, { merge: true });
 
                 appAttendance = appAttendance.filter(a => !(a.date === date && a.studentId === stId));
-                const newRec = { date, studentId: stId, status, quality, lesson, timeIn, timeOut, remarks, photo };
                 appAttendance.push(newRec);
-
-                if (isFirebaseAvailable && db) {
-                    try {
-                        const docId = `${date}_${stId}`;
-                        await db.collection('attendance').doc(docId).set(newRec, { merge: true });
-                    } catch (err) {
-                        console.error("Error saving attendance to Firestore:", err);
-                    }
-                }
             }
 
-            setStoreData('attendance', appAttendance);
-            alert("Attendance and Lesson logs saved successfully!");
+            alert("Attendance and Cloudinary Photos saved directly to Firestore!");
             renderDashboard();
             loadAttendanceForDate();
         }
 
-        /* FIX 1 ITEM 2 & FIX 2 ITEM 6: Monthly Report contains Time (timeIn - timeOut) and Photo */
+        async function deleteSingleAttendancePhoto(stId, date, photoIndex) {
+            if (!confirm("Remove this photo from Firestore?")) return;
+            const log = appAttendance.find(a => a.date === date && a.studentId === stId);
+            if (log && log.photos) {
+                log.photos.splice(photoIndex, 1);
+                const docId = `${date}_${stId}`;
+                await db.collection('attendance').doc(docId).update({ photos: log.photos });
+                loadAttendanceForDate();
+            }
+        }
+
+        /* 
+         * ======================================================================================
+         * 7. LIGHTBOX GALLERY ENGINE WITH NEXT / PREV
+         * ======================================================================================
+         */
+        let currentLightboxGallery = [];
+        let currentLightboxIndex = 0;
+        let currentActivePhotoContext = null;
+
+        function openPhotoLightboxGroup(stId, date, activeIndex) {
+            const log = appAttendance.find(a => a.date === date && a.studentId === stId);
+            if (!log) return;
+            const photos = Array.isArray(log.photos) ? log.photos : (log.photo ? [log.photo] : []);
+            if (photos.length === 0) return;
+
+            currentLightboxGallery = photos;
+            currentLightboxIndex = activeIndex;
+            currentActivePhotoContext = { stId, date };
+            updateLightboxView();
+            openModal('photoLightboxModal');
+        }
+
+        function updateLightboxView() {
+            if (currentLightboxGallery.length === 0) {
+                closeModal('photoLightboxModal');
+                return;
+            }
+            if (currentLightboxIndex < 0) currentLightboxIndex = currentLightboxGallery.length - 1;
+            if (currentLightboxIndex >= currentLightboxGallery.length) currentLightboxIndex = 0;
+
+            document.getElementById('lightboxImg').src = currentLightboxGallery[currentLightboxIndex];
+            document.getElementById('lightboxCounter').innerText = `Photo ${currentLightboxIndex + 1} of ${currentLightboxGallery.length}`;
+        }
+
+        function navigateLightbox(step) {
+            currentLightboxIndex += step;
+            updateLightboxView();
+        }
+
+        async function deleteCurrentLightboxPhoto() {
+            if (!currentActivePhotoContext) return;
+            if (!confirm("Delete this photo permanently from this record?")) return;
+
+            const { stId, date } = currentActivePhotoContext;
+            const log = appAttendance.find(a => a.date === date && a.studentId === stId);
+            if (log && log.photos) {
+                log.photos.splice(currentLightboxIndex, 1);
+                const docId = `${date}_${stId}`;
+                await db.collection('attendance').doc(docId).update({ photos: log.photos });
+                currentLightboxGallery = log.photos;
+                if (currentLightboxGallery.length === 0) {
+                    closeModal('photoLightboxModal');
+                } else {
+                    updateLightboxView();
+                }
+                loadAttendanceForDate();
+            }
+        }
+
+        /* 
+         * ======================================================================================
+         * 8. MONTHLY REPORT & COURSES ENGINE
+         * ======================================================================================
+         */
         function generateMonthlyReport() {
             const stId = document.getElementById('reportStudentSelect').value;
             const month = document.getElementById('reportMonthPicker').value;
 
             const filtered = appAttendance.filter(a => a.studentId === stId && a.date.startsWith(month));
-            
             let p = 0, aCount = 0, l = 0, lv = 0;
             const logBody = document.getElementById('rptLogBody');
             logBody.innerHTML = '';
+
+            const defaultCourseName = appCourses[0] ? appCourses[0].title : "Revision Quran";
 
             filtered.forEach(log => {
                 if(log.status === 'Present') p++;
@@ -1592,15 +1425,22 @@
                 if(log.status === 'Late') l++;
                 if(log.status === 'Leave') lv++;
 
+                const photos = Array.isArray(log.photos) ? log.photos : (log.photo ? [log.photo] : []);
+                let photosRowHtml = '';
+                photos.forEach((u, i) => {
+                    photosRowHtml += `<img src="${escapeHtml(u)}" class="w-8 h-8 object-cover rounded border cursor-pointer hover:opacity-80" onclick="openPhotoLightboxGroup('${log.studentId}', '${log.date}', ${i})">`;
+                });
+
                 const tr = document.createElement('tr');
                 if(log.status === 'Absent') tr.className = "bg-red-50 text-red-700 font-semibold";
                 tr.innerHTML = `
                     <td class="p-2 border-b">${escapeHtml(log.date || '')}</td>
                     <td class="p-2 border-b">${escapeHtml(log.status || '')}</td>
                     <td class="p-2 border-b">${escapeHtml(log.lesson || '-')}</td>
+                    <td class="p-2 border-b font-medium text-brandBlue">${escapeHtml(log.courseTitle || defaultCourseName)}</td>
                     <td class="p-2 border-b">${escapeHtml(log.quality || '-')}</td>
                     <td class="p-2 border-b">${log.timeIn || log.timeOut ? `${escapeHtml(log.timeIn || '-')} - ${escapeHtml(log.timeOut || '-')}` : '-'}</td>
-                    <td class="p-2 border-b">${log.photo ? `<img src="${escapeHtml(log.photo)}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openPhotoLightbox('${escapeHtml(log.photo)}')">` : 'No Photo'}</td>
+                    <td class="p-2 border-b"><div class="flex flex-row flex-wrap gap-1">${photosRowHtml || 'None'}</div></td>
                     <td class="p-2 border-b">${escapeHtml(log.remarks || '-')}</td>
                 `;
                 logBody.appendChild(tr);
@@ -1617,93 +1457,29 @@
             document.getElementById('reportOutputArea').classList.remove('hidden');
         }
 
-        function openPhotoLightbox(url) {
-            document.getElementById('lightboxImg').src = url;
-            openModal('photoLightboxModal');
-        }
-
-        /* 
-         * ======================================================================================
-         * 6b. COURSES & CURRICULUM MANAGEMENT (FIRESTORE + LOCALSTORAGE SYNC)
-         * ======================================================================================
-         */
-        let coursesSeedChecked = false;
-
-        async function loadCoursesFromFirestore() {
-            // Render cached courses immediately so UI feels instant
-            if (appCourses && appCourses.length > 0) {
-                renderCoursesList();
-            }
-
-            if (isFirebaseAvailable && db) {
-                try {
-                    const snap = await db.collection('courses').get();
-
-                    if (snap.empty && !coursesSeedChecked) {
-                        coursesSeedChecked = true;
-                        // Seed the 4 initial courses once using deterministic doc IDs to prevent duplicates
-                        const batch = db.batch();
-                        DEFAULT_COURSES.forEach(course => {
-                            const docRef = db.collection('courses').doc(course.id);
-                            batch.set(docRef, {
-                                title: course.title,
-                                description: course.description,
-                                order: course.order,
-                                createdAt: Date.now() + course.order
-                            }, { merge: true });
-                        });
-                        await batch.commit();
-                        appCourses = [...DEFAULT_COURSES];
-                    } else {
-                        coursesSeedChecked = true;
-                        appCourses = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-                        appCourses.sort((a, b) => (a.order || a.createdAt || 0) - (b.order || b.createdAt || 0));
-                    }
-
-                    setStoreData('courses', appCourses);
-                    renderCoursesList();
-                    return;
-                } catch (err) {
-                    console.warn("Could not sync courses from Firestore, using local backup:", err);
-                }
-            }
-
-            // Offline / localStorage fallback if no courses exist yet
-            if (!appCourses || appCourses.length === 0) {
-                appCourses = [...DEFAULT_COURSES];
-                setStoreData('courses', appCourses);
-            }
-            renderCoursesList();
-        }
-
         function renderCoursesList() {
             const container = document.getElementById('coursesListContainer');
             if (!container) return;
             container.innerHTML = '';
 
-            if (!appCourses || appCourses.length === 0) {
-                container.innerHTML = '<p class="text-xs text-gray-400 col-span-full">No courses added yet. Use the form above to add your first course.</p>';
-                return;
-            }
+            const courses = appCourses.length > 0 ? appCourses : DEFAULT_COURSES;
 
-            appCourses.forEach(course => {
+            courses.forEach(course => {
                 const card = document.createElement('div');
-                card.className = "p-4 rounded-xl border border-gray-200 bg-white hover:border-brandBlue/40 transition flex flex-col justify-between gap-3 shadow-sm";
+                card.className = "p-4 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between gap-3";
                 card.innerHTML = `
                     <div class="space-y-1">
-                        <div class="flex items-start justify-between gap-2">
-                            <h5 class="font-bold text-sm text-brandNavy flex items-center">
-                                <i class="fa-solid fa-book-quran text-brandBlue me-2"></i>
-                                <span>${escapeHtml(course.title)}</span>
-                            </h5>
-                        </div>
-                        <p class="text-xs text-gray-600 leading-relaxed">${course.description ? escapeHtml(course.description) : '<span class="italic text-gray-400">No description provided.</span>'}</p>
+                        <h5 class="font-bold text-sm text-brandNavy flex items-center">
+                            <i class="fa-solid fa-book-quran text-brandBlue me-2"></i>
+                            <span>${escapeHtml(course.title)}</span>
+                        </h5>
+                        <p class="text-xs text-gray-600 leading-relaxed">${escapeHtml(course.description || '')}</p>
                     </div>
                     <div class="flex items-center justify-end space-x-2 border-t border-gray-100 pt-2.5">
-                        <button type="button" onclick="startEditCourse('${escapeHtml(course.id)}')" class="bg-blue-50 hover:bg-blue-100 text-brandBlue px-2.5 py-1 rounded-lg text-xs font-medium transition">
+                        <button type="button" onclick="startEditCourse('${escapeHtml(course.id)}')" class="bg-blue-50 hover:bg-blue-100 text-brandBlue px-2.5 py-1 rounded-lg text-xs font-medium">
                             <i class="fa-solid fa-pen-to-square me-1"></i> Edit
                         </button>
-                        <button type="button" onclick="deleteCourse('${escapeHtml(course.id)}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg text-xs font-medium transition">
+                        <button type="button" onclick="deleteCourse('${escapeHtml(course.id)}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg text-xs font-medium">
                             <i class="fa-solid fa-trash me-1"></i> Delete
                         </button>
                     </div>
@@ -1720,54 +1496,23 @@
 
             if (!title) {
                 alert("Please enter a Course Title.");
-                titleInput.focus();
                 return;
             }
 
-            const submitBtn = document.getElementById('courseSubmitBtn');
-            submitBtn.disabled = true;
-
-            try {
-                if (editingCourseId) {
-                    const idx = appCourses.findIndex(c => c.id === editingCourseId);
-                    if (idx !== -1) {
-                        appCourses[idx] = { ...appCourses[idx], title, description, updatedAt: Date.now() };
-                    }
-                    if (isFirebaseAvailable && db) {
-                        await db.collection('courses').doc(editingCourseId).set({
-                            title,
-                            description,
-                            updatedAt: Date.now()
-                        }, { merge: true });
-                    }
-                    cancelEditCourse();
-                } else {
-                    const newId = 'course-' + Date.now();
-                    const newCourse = {
-                        id: newId,
-                        title,
-                        description,
-                        order: appCourses.length + 1,
-                        createdAt: Date.now()
-                    };
-                    if (isFirebaseAvailable && db) {
-                        await db.collection('courses').doc(newId).set(newCourse);
-                    }
-                    appCourses.push(newCourse);
-                    titleInput.value = '';
-                    descInput.value = '';
-                }
-
-                setStoreData('courses', appCourses);
-                renderCoursesList();
-            } catch (err) {
-                console.error("Error saving course:", err);
-                alert("Could not save course to Firebase. Saved locally.");
-                setStoreData('courses', appCourses);
-                renderCoursesList();
-            } finally {
-                submitBtn.disabled = false;
+            if (editingCourseId) {
+                await db.collection('courses').doc(editingCourseId).set({ title, description, updatedAt: Date.now() }, { merge: true });
+                cancelEditCourse();
+            } else {
+                const newId = 'course-' + Date.now();
+                const newCourse = { id: newId, title, description, order: appCourses.length + 1, createdAt: Date.now() };
+                await db.collection('courses').doc(newId).set(newCourse);
+                titleInput.value = '';
+                descInput.value = '';
             }
+
+            await fetchAllDataFromFirestore();
+            renderCoursesList();
+            loadAttendanceForDate();
         }
 
         function startEditCourse(courseId) {
@@ -1779,7 +1524,6 @@
             document.getElementById('courseDescInput').value = course.description || '';
             document.getElementById('courseSubmitBtn').innerText = 'Update Course';
             document.getElementById('courseCancelBtn').classList.remove('hidden');
-            document.getElementById('courseTitleInput').focus();
         }
 
         function cancelEditCourse() {
@@ -1792,35 +1536,21 @@
 
         async function deleteCourse(courseId) {
             if (!confirm("Are you sure you want to delete this course?")) return;
-
-            if (editingCourseId === courseId) {
-                cancelEditCourse();
-            }
-
-            try {
-                if (isFirebaseAvailable && db) {
-                    await db.collection('courses').doc(courseId).delete();
-                }
-            } catch (err) {
-                console.error("Error deleting course from Firestore:", err);
-            }
-
-            appCourses = appCourses.filter(c => c.id !== courseId);
-            setStoreData('courses', appCourses);
+            await db.collection('courses').doc(courseId).delete();
+            await fetchAllDataFromFirestore();
             renderCoursesList();
+            loadAttendanceForDate();
         }
 
         /* 
          * ======================================================================================
-         * 7. PARENT PORTAL DATA LOADER (FIX 1 ITEM 3 & FIX 2 ITEMS 1-6)
+         * 9. PARENT PORTAL LOADER (MULTIPLE PHOTOS SIDE-BY-SIDE + COURSES TAB BEFORE FEES)
          * ======================================================================================
          */
-
-        /* FIX 2 ITEM 2: Remove 'lessons' from array in switchParentTab() */
         function switchParentTab(tabName) {
             document.querySelectorAll('.parent-tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`ptab-${tabName}-content`)?.classList.remove('hidden');
-            ['overview', 'attendance', 'fees'].forEach(t => {
+            ['overview', 'attendance', 'courses', 'fees'].forEach(t => {
                 const btn = document.getElementById('ptab-' + t);
                 if (!btn) return;
                 btn.className = t === tabName
@@ -1831,56 +1561,8 @@
 
         function switchParentChild(studentId) {
             loadParentPortalData(studentId);
-            syncParentCloudData(studentId);
         }
 
-        async function syncParentCloudData(studentId) {
-            if (!(isFirebaseAvailable && db) || !studentId) return;
-            try {
-                const [stDoc, attSnap, acadDoc, feeSnap, hwSnap] = await Promise.all([
-                    db.collection('students').doc(studentId).get(),
-                    db.collection('attendance').where('studentId', '==', studentId).get(),
-                    db.collection('academics').doc(studentId).get(),
-                    db.collection('fees').where('studentId', '==', studentId).get(),
-                    db.collection('homework').get()
-                ]);
-
-                if (stDoc.exists) {
-                    const stData = { ...stDoc.data(), id: stDoc.id };
-                    appStudents = appStudents.filter(s => s.id !== studentId);
-                    appStudents.push(stData);
-                    setStoreData('students', appStudents);
-                }
-
-                if (!attSnap.empty) {
-                    const cloudAtt = attSnap.docs.map(d => d.data());
-                    appAttendance = appAttendance.filter(a => a.studentId !== studentId).concat(cloudAtt);
-                    setStoreData('attendance', appAttendance);
-                }
-
-                if (acadDoc.exists) {
-                    appAcademics[studentId] = acadDoc.data();
-                    setStoreData('academics', appAcademics);
-                }
-
-                if (!feeSnap.empty) {
-                    const cloudFees = feeSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-                    appFees = appFees.filter(f => f.studentId !== studentId).concat(cloudFees);
-                    setStoreData('fees', appFees);
-                }
-
-                if (!hwSnap.empty) {
-                    appHomework = hwSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-                    setStoreData('homework', appHomework);
-                }
-
-                loadParentPortalData(studentId);
-            } catch (err) {
-                console.warn("Parent Portal Firestore sync fallback to localStorage:", err);
-            }
-        }
-
-        /* FIX 1 ITEM 3 & FIX 2 ITEM 6: parentAttendanceTable includes Time & Photo columns */
         function loadParentPortalData(studentId) {
             currentParentViewStudentId = studentId;
             const st = appStudents.find(s => s.id === studentId) || appStudents[0];
@@ -1909,33 +1591,80 @@
             feeBadge.innerText = hasUnpaid ? "Unpaid" : "Paid";
             feeBadge.className = hasUnpaid ? "text-2xl font-bold text-red-600 mt-1" : "text-2xl font-bold text-green-600 mt-1";
 
+            const availableCourses = appCourses.length > 0 ? appCourses : DEFAULT_COURSES;
+            const latestCourseLog = stAtt.find(a => a.courseTitle);
+            const enrolledCourseTitle = latestCourseLog ? latestCourseLog.courseTitle : (availableCourses[0] ? availableCourses[0].title : "Revision Quran");
+            const courseObj = availableCourses.find(c => c.title.toLowerCase() === enrolledCourseTitle.toLowerCase()) || availableCourses[0] || {};
+
+            // Render Parent Attendance Table with Multiple Photos Side-by-Side in Flex Row
             const attBody = document.getElementById('parentAttendanceTable');
             if (attBody) {
                 attBody.innerHTML = '';
                 stAtt.forEach(log => {
+                    const rowCourse = log.courseTitle || enrolledCourseTitle;
+                    const photos = Array.isArray(log.photos) ? log.photos : (log.photo ? [log.photo] : []);
+                    
+                    let photosHtml = '';
+                    if (photos.length > 0) {
+                        photosHtml = '<div class="flex flex-row flex-wrap items-center gap-1.5">';
+                        photos.forEach((url, pIdx) => {
+                            photosHtml += `<img src="${escapeHtml(url)}" class="w-10 h-10 object-cover rounded-md border border-gray-200 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="openPhotoLightboxGroup('${st.id}', '${log.date}', ${pIdx})">`;
+                        });
+                        photosHtml += '</div>';
+                    } else {
+                        photosHtml = '<span class="text-gray-400 italic">No photos</span>';
+                    }
+
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td class="p-2 border-b">${escapeHtml(log.date || '')}</td>
+                        <td class="p-2 border-b font-medium text-gray-700">${escapeHtml(log.date || '')}</td>
                         <td class="p-2 border-b font-semibold ${log.status === 'Absent' ? 'text-red-600' : 'text-green-600'}">${escapeHtml(log.status || '')}</td>
                         <td class="p-2 border-b">${escapeHtml(log.lesson || '-')}</td>
+                        <td class="p-2 border-b font-semibold text-brandBlue">${escapeHtml(rowCourse)}</td>
                         <td class="p-2 border-b">${escapeHtml(log.quality || '-')}</td>
-                        <td class="p-2 border-b">${log.timeIn || log.timeOut ? `${escapeHtml(log.timeIn || '-')} - ${escapeHtml(log.timeOut || '-')}` : '-'}</td>
-                        <td class="p-2 border-b">${log.photo ? `<img src="${escapeHtml(log.photo)}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openPhotoLightbox('${escapeHtml(log.photo)}')">` : 'No Photo'}</td>
-                        <td class="p-2 border-b">${escapeHtml(log.remarks || '-')}</td>
+                        <td class="p-2 border-b whitespace-nowrap">${log.timeIn || log.timeOut ? `${escapeHtml(log.timeIn || '-')} - ${escapeHtml(log.timeOut || '-')}` : '-'}</td>
+                        <td class="p-2 border-b">${photosHtml}</td>
+                        <td class="p-2 border-b text-gray-600">${escapeHtml(log.remarks || '-')}</td>
                     `;
                     attBody.appendChild(tr);
                 });
             }
 
+            // Render Parent Courses Tab
+            document.getElementById('parentCourseTitle').innerText = enrolledCourseTitle;
+            document.getElementById('parentCourseDesc').innerText = courseObj.description || "Class schedule 13 mints --- Lesson / 5 mints -- previous -- Lesson / Book + Namaz /";
+            document.getElementById('parentCourseLessonsCount').innerText = `${stAtt.length} Recorded Lesson(s)`;
+
+            const historyTable = document.getElementById('parentCourseHistoryTable');
+            if (historyTable) {
+                historyTable.innerHTML = '';
+                if (stAtt.length === 0) {
+                    historyTable.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-gray-400">No course history recorded yet.</td></tr>`;
+                } else {
+                    stAtt.forEach(log => {
+                        const rowCourse = log.courseTitle || enrolledCourseTitle;
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="p-2.5 border-b font-medium text-gray-700">${escapeHtml(log.date || '')}</td>
+                            <td class="p-2.5 border-b font-semibold text-brandBlue">${escapeHtml(rowCourse)}</td>
+                            <td class="p-2.5 border-b">${escapeHtml(log.lesson || '-')}</td>
+                            <td class="p-2.5 border-b">${escapeHtml(log.quality || '-')}</td>
+                        `;
+                        historyTable.appendChild(tr);
+                    });
+                }
+            }
+
+            // Render Fee List
             const feeList = document.getElementById('parentFeeList');
             if (feeList) {
                 feeList.innerHTML = '';
                 stFees.forEach(f => {
                     const paid = f.status !== 'Unpaid';
                     const div = document.createElement('div');
-                    div.className = "p-3 border rounded-lg flex justify-between items-center text-xs";
+                    div.className = "p-3 border rounded-lg flex justify-between items-center text-xs bg-white shadow-sm";
                     div.innerHTML = `<div><strong>Month: ${escapeHtml(f.month || '-')}</strong></div>
-                                     <span class="px-2 py-0.5 rounded-full font-semibold ${paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${paid ? 'Paid' : 'Unpaid'}</span>`;
+                                     <span class="px-2.5 py-0.5 rounded-full font-semibold ${paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${paid ? 'Paid' : 'Unpaid'}</span>`;
                     feeList.appendChild(div);
                 });
             }
@@ -1943,7 +1672,7 @@
 
         /* 
          * ======================================================================================
-         * 8. ACADEMICS, FEES & ANNOUNCEMENTS
+         * 10. ACADEMICS, FEES & ANNOUNCEMENTS (FIRESTORE ONLY)
          * ======================================================================================
          */
         async function saveAcademicProgress() {
@@ -1953,18 +1682,9 @@
             const feedback = document.getElementById('acadFeedback').value;
 
             const record = { progress: pct, testScore: score, feedback: feedback };
+            await db.collection('academics').doc(stId).set(record, { merge: true });
             appAcademics[stId] = record;
-            setStoreData('academics', appAcademics);
-
-            if (isFirebaseAvailable && db) {
-                try {
-                    await db.collection('academics').doc(stId).set(record, { merge: true });
-                } catch (err) {
-                    console.error("Error saving academic progress to Firestore:", err);
-                }
-            }
-
-            alert("Academic progress saved!");
+            alert("Academic progress saved to Firestore!");
         }
 
         function renderFeeTable() {
@@ -2004,16 +1724,8 @@
             const method = document.getElementById('mFeeMethod').value;
 
             const newFee = { id: 'F-' + Date.now().toString().slice(-4), studentId, month, amount, status, method };
+            await db.collection('fees').doc(newFee.id).set(newFee);
             appFees.push(newFee);
-            setStoreData('fees', appFees);
-
-            if (isFirebaseAvailable && db) {
-                try {
-                    await db.collection('fees').doc(newFee.id).set(newFee, { merge: true });
-                } catch (err) {
-                    console.error("Error saving fee record to Firestore:", err);
-                }
-            }
 
             closeModal('addFeeModal');
             renderFeeTable();
@@ -2048,7 +1760,7 @@
                         <span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Due: ${hw.dueDate}</span>
                     </div>
                     <p class="text-xs text-gray-500 truncate">${escapeHtml(hw.link)}</p>
-                    <a href="${escapeHtml(hw.link)}" target="_blank" rel="noopener noreferrer" class="inline-block text-xs text-brandBlue hover:underline font-medium">Open Worksheet / Link &rarr;</a>
+                    <a href="${escapeHtml(hw.link)}" target="_blank" rel="noopener noreferrer" class="inline-block text-xs text-brandBlue hover:underline font-medium">Open Worksheet &rarr;</a>
                 `;
                 container.appendChild(div);
             });
@@ -2060,16 +1772,8 @@
             const link = document.getElementById('mHwLink').value;
 
             const newHw = { id: 'HW-' + Date.now(), title, dueDate, link };
+            await db.collection('homework').doc(newHw.id).set(newHw);
             appHomework.push(newHw);
-            setStoreData('homework', appHomework);
-
-            if (isFirebaseAvailable && db) {
-                try {
-                    await db.collection('homework').doc(newHw.id).set(newHw, { merge: true });
-                } catch (err) {
-                    console.error("Error saving homework to Firestore:", err);
-                }
-            }
 
             closeModal('addHomeworkModal');
             renderHomeworkCards();
@@ -2095,13 +1799,14 @@
             });
         }
 
-        function saveAnnouncement() {
+        async function saveAnnouncement() {
             const title = document.getElementById('mNoticeTitle').value;
             const type = document.getElementById('mNoticeType').value;
             const msg = document.getElementById('mNoticeMsg').value;
 
-            appAnnouncements.push({ id: 'A-' + Date.now(), title, type, msg, date: todayStr });
-            setStoreData('announcements', appAnnouncements);
+            const newNotice = { id: 'A-' + Date.now(), title, type, msg, date: todayStr };
+            await db.collection('announcements').doc(newNotice.id).set(newNotice);
+            appAnnouncements.push(newNotice);
 
             closeModal('addNoticeModal');
             renderAnnouncementsList();
@@ -2120,32 +1825,33 @@
                     <td class="p-3 font-semibold text-brandNavy">${escapeHtml(t.subject)}</td>
                     <td class="p-3 text-xs text-gray-500">Class Teacher</td>
                     <td class="p-3"><a href="${escapeHtml(t.link)}" target="_blank" rel="noopener noreferrer" class="text-xs text-white bg-brandBlue px-2.5 py-1 rounded-lg inline-block">Join Live</a></td>
-                    <td class="p-3">${t.video ? `<a href="${escapeHtml(t.video)}" target="_blank" rel="noopener noreferrer" class="text-xs text-purple-600 underline">Watch</a>` : '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        function saveClassSchedule() {
+        async function saveClassSchedule() {
             const day = document.getElementById('mClassDay').value;
             const time = document.getElementById('mClassTime').value;
             const subject = document.getElementById('mClassSubject').value;
             const link = document.getElementById('mClassLink').value;
 
-            appTimetable.push({ day, time, subject, link, video: '' });
-            setStoreData('timetable', appTimetable);
+            const newSlot = { id: 'TT-' + Date.now(), day, time, subject, link };
+            await db.collection('timetable').doc(newSlot.id).set(newSlot);
+            appTimetable.push(newSlot);
 
             closeModal('addClassModal');
             renderTimetable();
         }
 
-        function saveStudentBadge() {
+        async function saveStudentBadge() {
             const stId = document.getElementById('certStudentSelect').value;
             const title = document.getElementById('certTitle').value;
-            const url = document.getElementById('certImageURL').value;
 
-            appBadges.push({ studentId: stId, title, url, date: todayStr });
-            setStoreData('badges', appBadges);
+            const newBdg = { id: 'BDG-' + Date.now(), studentId: stId, title, date: todayStr };
+            await db.collection('badges').doc(newBdg.id).set(newBdg);
+            appBadges.push(newBdg);
+
             alert("Badge issued successfully!");
             renderBadgesList();
         }
@@ -2163,11 +1869,6 @@
             });
         }
 
-        /* 
-         * ======================================================================================
-         * 9. DASHBOARD HELPERS & UTILITIES
-         * ======================================================================================
-         */
         function renderDashboard() {
             document.getElementById('dashTotalStudents').innerText = appStudents.length;
             
